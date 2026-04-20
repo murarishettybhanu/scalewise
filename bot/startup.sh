@@ -11,8 +11,8 @@ MONGODB_URI=$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/
 gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 
 # 3. Pull the image
-# Note: [PROJECT_ID] will be replaced during the gcloud command
 IMAGE_NAME="us-central1-docker.pkg.dev/project-ed393033-4d39-4f83-820/scalewise-repo/bot:latest"
+docker pull "$IMAGE_NAME"
 
 # 4. Stop and remove existing container if any
 docker stop bot-container || true
