@@ -5,7 +5,17 @@
 # 1. Pull metadata for environment variables
 BOT_TOKEN=$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/BOT_TOKEN)
 MONGODB_URI=$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/MONGODB_URI)
-GEMINI_API_KEY=$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/GEMINI_API_KEY)
+
+# Load Local Secrets if they exist (to prevent leaks)
+if [ -f ~/scalewise.env ]; then
+    export $(grep -v '^#' ~/scalewise.env | xargs)
+    echo "🔐 Loaded GEMINI_API_KEY from local .env"
+fi
+
+# Fetch from metadata ONLY if not set locally
+if [ -z "$GEMINI_API_KEY" ]; then
+    GEMINI_API_KEY=$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/GEMINI_API_KEY)
+fi
 
 # 2. Configure Docker to use Google Artifact Registry
 # Modern way using gcloud instead of the legacy docker-credential-gcr
