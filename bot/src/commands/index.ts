@@ -319,16 +319,22 @@ export async function pantryCommand(ctx: BotContext): Promise<void> {
 
 export async function helpCommand(ctx: BotContext): Promise<void> {
   await ctx.reply(
-    `🤖 *ScaleWise AI — Commands*\n\n` +
-      `/profile — View your targets & banking\n` +
-      `/diet — See today's remaining budget\n` +
-      `/activity — Log movement (e.g. 30min walk)\n` +
-      `/weight — Log daily weight & check spikes\n` +
-      `/tax <food> — Calculate Step Tax for a treat\n` +
-      `/crave — Handle an urge mindfulness style\n` +
-      `/cheat — Schedule cheat day & bank calories\n` +
-      `/pantry — Recipe ideas from ingredients\n` +
-      `/help — Show this message\n\n` +
+    `🤖 *ScaleWise AI — Command Center*\n\n` +
+      `🥗 *Diet & Tracking*\n` +
+      `• /log <meal> — Log food (Photo or Text)\n` +
+      `• /diet — See today's remaining budget\n` +
+      `• /weight <kg> — Log daily weight\n` +
+      `• /pantry — Recipe ideas from items\n\n` +
+      `🏃 *Activity & Movement*\n` +
+      `• /activity <desc> — Log movement (e.g. 30m walk)\n` +
+      `• /tax <food> — Calculate walking "tax" for food\n\n` +
+      `🧠 *Mindfulness & Banking*\n` +
+      `• /crave — Handle food urges mindful style\n` +
+      `• /cheat — Schedule cheat day & bank calories\n\n` +
+      `⚙️ *Profile Management*\n` +
+      `• /profile — View your targets & banking\n` +
+      `• /update — Update your goals/stats\n` +
+      `• /delete — Permanently delete your data\n\n` +
       `📸 *Pro-tip:* Just send a photo of your food to auto-log macros!`,
     { parse_mode: "Markdown" }
   );

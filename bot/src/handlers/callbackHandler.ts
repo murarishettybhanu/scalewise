@@ -1,5 +1,6 @@
 import { BotContext } from "../types";
 import { dietCommand } from "../commands";
+import { User, Profile, DailyLog, WeightLog, ActivityLog } from "../models";
 
 /**
  * Handles all global inline button clicks (callback queries).
@@ -26,7 +27,26 @@ export async function handleCallbackQuery(ctx: BotContext): Promise<void> {
 
   else if (data === "view_diet_status") {
     await ctx.answerCallbackQuery();
-    // Reuse the existing diet command logic
     await dietCommand(ctx);
+  }
+
+  else if (data === "confirm_delete_all") {
+    await ctx.answerCallbackQuery();
+    const telegramId = ctx.from!.id;
+    await User.deleteOne({ telegramId });
+    await Profile.deleteOne({ telegramId });
+    await DailyLog.deleteMany({ telegramId });
+    await WeightLog.deleteMany({ telegramId });
+    await ActivityLog.deleteMany({ telegramId });
+    await ctx.editMessageText(
+      "🗑️ *All your data has been deleted.*\n\n" +
+      "You've been successfully removed from our system. Feel free to /start again anytime!",
+      { parse_mode: "Markdown" }
+    );
+  }
+
+  else if (data === "cancel_delete") {
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText("Safe! Your profile and data are secure. ✅");
   }
 }
