@@ -5,6 +5,7 @@
 # 1. Pull metadata for environment variables
 BOT_TOKEN=$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/BOT_TOKEN)
 MONGODB_URI=$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/MONGODB_URI)
+GEMINI_API_KEY=$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/GEMINI_API_KEY)
 
 # 2. Configure Docker to use Google Artifact Registry
 # Modern way using gcloud instead of the legacy docker-credential-gcr
@@ -24,6 +25,7 @@ docker run -d \
     --restart always \
     -e BOT_TOKEN="$BOT_TOKEN" \
     -e MONGODB_URI="$MONGODB_URI" \
+    -e GEMINI_API_KEY="$GEMINI_API_KEY" \
     -e NODE_ENV="production" \
     "$IMAGE_NAME"
 
