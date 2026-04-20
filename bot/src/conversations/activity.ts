@@ -11,7 +11,7 @@ type BotConversation = Conversation<BotContext, Context>;
  */
 export async function logActivityConversation(
   conversation: BotConversation,
-  ctx: BotContext
+  ctx: Context
 ): Promise<void> {
   await ctx.reply("🏃 *What did you do?*\n\nTell me the activity and duration (e.g., '30 mins of brisk walking' or '1 hour gym session')", { parse_mode: "Markdown" });
 
