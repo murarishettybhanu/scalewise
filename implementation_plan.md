@@ -60,8 +60,11 @@ scalewise/
 ### Phase 1 Deployment
 | Component | Target | Strategy |
 |---|---|---|
-| Bot | GCP Compute Engine | **Automated via GitHub Actions** (Build -> Push to GAR -> SSH Deploy) |
-| Database | MongoDB Atlas | Free M0 cluster (512 MB), connect via `MONGODB_URI` env var |
+| Bot | GCP Compute Engine | **GitHub Actions** via **Workload Identity Federation (WIF)** |
+| Database | MongoDB Atlas | Free M0 cluster (512 MB) |
+
+> [!IMPORTANT]  
+> We have switched to **Workload Identity Federation (WIF)** for security. This avoids using vulnerable JSON keys. Authentication is now handled via short-lived tokens.
 
 > [!IMPORTANT]  
 > Phase 1 ships a **live, usable bot** on Telegram. Users can onboard and a profile is persisted. This is the MVP entry point.

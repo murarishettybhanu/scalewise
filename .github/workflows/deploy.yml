@@ -11,13 +11,19 @@ env:
   REPOSITORY: scalewise-repo
   IMAGE: bot
   # The following should be set as GitHub Secrets
-  # GCE_INSTANCE: ${{ secrets.GCE_INSTANCE_NAME }}
-  # GCE_ZONE: ${{ secrets.GCE_INSTANCE_ZONE }}
+  # GCE_INSTANCE_NAME: ${{ secrets.GCE_INSTANCE_NAME }}
+  # GCE_INSTANCE_ZONE: ${{ secrets.GCE_INSTANCE_ZONE }}
+  # WIF_PROVIDER: ${{ secrets.WIF_PROVIDER }} # Form: projects/[NUMBER]/locations/global/workloadIdentityPools/[POOL]/providers/[PROVIDER]
+  # WIF_SERVICE_ACCOUNT: github-deployer@project-ed393033-4d39-4f83-820.iam.gserviceaccount.com
 
 jobs:
   build-and-push:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write' # Required for Workload Identity Federation
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -26,7 +32,8 @@ jobs:
         id: auth
         uses: 'google-github-actions/auth@v2'
         with:
-          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+          workload_identity_provider: '${{ secrets.WIF_PROVIDER }}'
+          service_account: 'github-deployer@project-ed393033-4d39-4f83-820.iam.gserviceaccount.com'
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
@@ -43,11 +50,16 @@ jobs:
     name: Deploy to GCE
     needs: build-and-push
     runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
     steps:
       - name: Google Auth
         uses: 'google-github-actions/auth@v2'
         with:
-          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+          workload_identity_provider: '${{ secrets.WIF_PROVIDER }}'
+          service_account: 'github-deployer@project-ed393033-4d39-4f83-820.iam.gserviceaccount.com'
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2

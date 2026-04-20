@@ -4,3 +4,10 @@ password
 SK5QBFVuDi7kfE0K
 
 SK5QBFVuDi7kfE0K
+
+Secret Name	        Value
+GCE_INSTANCE_NAME	scalewise-bot-vm
+GCE_INSTANCE_ZONE	us-central1-a
+GCP_PROJECT_ID	    project-ed393033-4d39-4f83-820
+BOT_TOKEN	        8736835482:AAHrGOgom7ik84lKkJ3DrQfjhVQElJe6l_s
+MONGODB_URI	        mongodb+srv://scalewiseclub_db_user:SK5QBFVuDi7kfE0K@scalewise.2n3vyxw.mongodb.net/
