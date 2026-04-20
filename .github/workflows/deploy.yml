@@ -55,6 +55,9 @@ jobs:
       id-token: 'write'
 
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Google Auth
         uses: 'google-github-actions/auth@v2'
         with:
@@ -66,13 +69,13 @@ jobs:
 
       - name: Copy startup script to VM
         run: |-
-          gcloud compute scp bot/startup.sh ${{ secrets.GCE_INSTANCE_NAME }}:~/startup.sh \
+          gcloud compute scp bot/startup.sh bhanuteja@${{ secrets.GCE_INSTANCE_NAME }}:~/startup.sh \
             --zone=${{ secrets.GCE_INSTANCE_ZONE }} \
             --quiet
 
       - name: SSH and Redeploy
         run: |-
-          gcloud compute ssh ${{ secrets.GCE_INSTANCE_NAME }} \
+          gcloud compute ssh bhanuteja@${{ secrets.GCE_INSTANCE_NAME }} \
             --zone=${{ secrets.GCE_INSTANCE_ZONE }} \
             --command="sudo bash ~/startup.sh" \
             --quiet
