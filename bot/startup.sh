@@ -7,18 +7,29 @@ BOT_TOKEN=$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/co
 MONGODB_URI=$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/MONGODB_URI)
 
 # Load Local Secrets if they exist (to prevent leaks)
-if [ -f ~/scalewise.env ]; then
-    export $(grep -v '^#' ~/scalewise.env | xargs)
-    echo "🔐 Loaded GEMINI_API_KEY from local .env"
+# We check the specific home dir because sudo runs as root
+ENV_PATH="/home/bhanuteja/scalewise.env"
+if [ -f "$ENV_PATH" ]; then
+    export $(grep -v '^#' "$ENV_PATH" | xargs)
+    echo "🔐 Loaded secrets from $ENV_PATH"
 fi
 
 # Fetch from metadata ONLY if not set locally AND if it exists
 if [ -z "$GEMINI_API_KEY" ]; then
-    # --fail makes curl return non-zero on 404, so we don't capture the HTML error
+    echo "🔍 GEMINI_API_KEY not in .env, checking metadata..."
     METADATA_KEY=$(curl -s -f -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/GEMINI_API_KEY)
     if [ $? -eq 0 ]; then
         GEMINI_API_KEY=$METADATA_KEY
+        echo "✅ Loaded GEMINI_API_KEY from Metadata"
+    else
+        echo "❌ GEMINI_API_KEY not found in Metadata"
     fi
+fi
+
+# Final check before running
+if [ -z "$GEMINI_API_KEY" ]; then
+    echo "🚨 ERROR: GEMINI_API_KEY is still missing! Please check $ENV_PATH"
+    exit 1
 fi
 
 # 2. Configure Docker to use Google Artifact Registry
