@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { config } from "../config";
 
 const genAI = new GoogleGenerativeAI(config.geminiApiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 export interface FoodAnalysis {
   dishName: string;
@@ -110,5 +110,48 @@ export async function generateRecipeFromPantry(items: string, targetKcal: number
   } catch (error) {
     console.error("Gemini Recipe Error:", error);
     return "Sorry, I couldn't generate a recipe for those items.";
+  }
+}
+
+/**
+ * Parses a text description of a meal and returns nutritional estimations.
+ */
+export async function parseFoodText(text: string): Promise<FoodAnalysis | null> {
+  const prompt = `
+    Act as a professional nutritionist and expert in Indian cuisine. 
+    Analyze the following text description of a meal and estimate its nutritional content.
+    
+    MEAL DESCRIPTION: "${text}"
+    
+    Output requirements:
+    1. Identify the dish name.
+    2. Provide total Calories (kcal), Protein (g), Carbohydrates (g), and Fat (g).
+    3. Include a 'Confidence Level' (High/Medium/Low).
+    4. Provide a brief reasoning for the estimate.
+
+    Return the result ONLY as a JSON object with the following keys:
+    {
+      "dishName": string,
+      "calories": number,
+      "protein": number,
+      "carbs": number,
+      "fat": number,
+      "confidence": "High" | "Medium" | "Low",
+      "reasoning": string
+    }
+  `;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const responseText = response.text();
+    
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+    
+    return JSON.parse(jsonMatch[0]) as FoodAnalysis;
+  } catch (error) {
+    console.error("Gemini Text Parsing Error:", error);
+    return null;
   }
 }

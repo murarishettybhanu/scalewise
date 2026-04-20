@@ -2,7 +2,7 @@ import { Context } from "grammy";
 import { User, Profile, DailyLog, WeightLog, ActivityLog } from "../models";
 import type { BotContext } from "../types";
 import { getRemainingPlan } from "../services/dietEngine";
-import { generateRecipeFromPantry } from "../services/gemini";
+import { generateRecipeFromPantry, parseFoodText } from "../services/gemini";
 import { parseActivityText, calculateActivityBurn } from "../services/activityService";
 import { calculateStepTax, getUrgeSurfingGuide, checkSodiumSpike } from "../services/behavioralService";
 
@@ -236,7 +236,45 @@ export async function cheatCommand(ctx: BotContext): Promise<void> {
 // ─── /log command ───────────────────────────────────────
 
 export async function logCommand(ctx: BotContext): Promise<void> {
-  await ctx.reply("To log a meal, you can:\n\n1️⃣ Send a *photo* of your food 📸\n2️⃣ Use `/log <description>` (incoming Phase 3 update!) 📝", { parse_mode: "Markdown" });
+  const text = ctx.message?.text?.replace("/log", "").trim();
+  if (!text) {
+    await ctx.conversation.enter("manualLog");
+    return;
+  }
+
+  const telegramId = ctx.from!.id;
+  const waitMsg = await ctx.reply("🥗 *Analyzing your meal...*", { parse_mode: "Markdown" });
+
+  const analysis = await parseFoodText(text);
+  if (!analysis) {
+    await ctx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, "❌ Sorry, I couldn't understand that meal description. Try being more specific about quantities!");
+    return;
+  }
+
+  const today = new Date().toISOString().split("T")[0];
+  await DailyLog.create({
+    telegramId,
+    date: today,
+    dishName: analysis.dishName,
+    calories: analysis.calories,
+    protein: analysis.protein,
+    carbs: analysis.carbs,
+    fat: analysis.fat,
+    isManual: true
+  });
+
+  const response = `
+🍱 *Meal Logged!*
+✅ Dish: ${analysis.dishName}
+🔥 Calories: ${analysis.calories} kcal
+🥩 Protein: ${analysis.protein}g
+🥗 Carbs: ${analysis.carbs}g
+🥑 Fat: ${analysis.fat}g
+
+_Confidence: ${analysis.confidence}_
+  `;
+
+  await ctx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, response, { parse_mode: "Markdown" });
 }
 
 // ─── /diet command ──────────────────────────────────────

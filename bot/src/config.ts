@@ -12,7 +12,8 @@ interface Config {
 function getConfig(): Config {
   const botToken = process.env.BOT_TOKEN;
   const mongodbUri = process.env.MONGODB_URI;
-  const geminiApiKey = process.env.GEMINI_API_KEY;
+  // Sanitize the API key: strip non-ASCII characters (e.g. smart quotes) and whitespace
+  const geminiApiKey = process.env.GEMINI_API_KEY?.replace(/[^\x00-\x7F]/g, "").trim();
 
   if (!botToken) {
     throw new Error("BOT_TOKEN is required. Get one from @BotFather on Telegram.");
