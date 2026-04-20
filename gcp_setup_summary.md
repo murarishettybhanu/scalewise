@@ -41,7 +41,18 @@ The secure, keyless authentication pipeline for GitHub Actions is fully active.
 - **External IP**: `136.115.37.126`
 - **Status**: `RUNNING`
 
-## 7. GitHub Actions Secrets Checklist
+---
+
+## 7. Instance Metadata (Runtime Secrets)
+The following secrets are stored in the GCE Instance Metadata for the bot to fetch at startup. These should **not** be stored in GitHub Secrets for production.
+
+| Metadata Key | Description |
+|---|---|
+| `BOT_TOKEN` | Telegram Bot API Token |
+| `MONGODB_URI` | MongoDB Atlas Connection String |
+| `GEMINI_API_KEY` | Google AI Studio Key (Gemini) |
+
+## 8. GitHub Actions Secrets Checklist
 Ensure these variables are set in your GitHub Repository Secrets (`Settings > Secrets > Actions`):
 
 | Secret Name | Exact Value to Use |
@@ -50,8 +61,6 @@ Ensure these variables are set in your GitHub Repository Secrets (`Settings > Se
 | `GCE_INSTANCE_NAME` | `scalewise-bot-vm` |
 | `GCE_INSTANCE_ZONE` | `us-central1-a` |
 | `PROJECT_ID` | `project-ed393033-4d39-4f83-820` |
-| `BOT_TOKEN` | (Found in `bot/src/.env`) |
-| `MONGODB_URI` | (Found in `bot/src/.env`) |
 
 ---
 **Document Status**: Verified via `gcloud` CLI on 2026-04-20.
