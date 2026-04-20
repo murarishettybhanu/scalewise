@@ -100,8 +100,11 @@ export function calculateActivityBurn(weight: number, activity: string, duration
   const metKey = getMetKey(activity, intensity);
   const met = MET_VALUES[metKey] || 3.0; // Default to moderate activity if unknown
   
-  const durationHr = durationMin / 60;
-  const calories = Math.round(met * weight * durationHr);
+  const w = weight || 70; // Fallback weight
+  const d = durationMin || 0;
+  
+  const durationHr = d / 60;
+  const calories = Math.round(met * w * durationHr);
 
-  return { calories, met };
+  return { calories: isNaN(calories) ? 0 : calories, met };
 }

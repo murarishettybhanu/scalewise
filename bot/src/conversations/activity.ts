@@ -35,7 +35,12 @@ export async function logActivityConversation(
     return;
   }
 
-  const { calories, met } = calculateActivityBurn(profile.weight, parsed.activity, parsed.duration, parsed.intensity);
+  const { calories, met } = calculateActivityBurn(profile.weight, parsed.activity, Number(parsed.duration), parsed.intensity);
+
+  if (isNaN(calories) || isNaN(met)) {
+    await activityCtx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, "❌ I had trouble calculating the calories for that. Could you try being more specific about the duration? (e.g., '30 minutes')");
+    return;
+  }
 
   const today = new Date().toISOString().split("T")[0];
   
