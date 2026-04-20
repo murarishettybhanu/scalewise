@@ -64,9 +64,15 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
+      - name: Copy startup script to VM
+        run: |-
+          gcloud compute scp bot/startup.sh ${{ secrets.GCE_INSTANCE_NAME }}:~/startup.sh \
+            --zone=${{ secrets.GCE_INSTANCE_ZONE }} \
+            --quiet
+
       - name: SSH and Redeploy
         run: |-
           gcloud compute ssh ${{ secrets.GCE_INSTANCE_NAME }} \
             --zone=${{ secrets.GCE_INSTANCE_ZONE }} \
-            --command="cd bot && sudo bash startup.sh" \
+            --command="sudo bash ~/startup.sh" \
             --quiet
