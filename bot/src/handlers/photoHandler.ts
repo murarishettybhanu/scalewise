@@ -1,10 +1,13 @@
-import { Context } from "grammy";
-import { FileFlavor } from "@grammyjs/files";
-import { analyzeFoodImage, recommendFromMenu } from "../services/gemini";
+import { analyzeFoodImage } from "../services/gemini";
 import { DailyLog, Profile } from "../models";
+import { config } from "../config";
 import type { BotContext } from "../types";
 
-export async function handlePhoto(ctx: BotContext & FileFlavor<Context>) {
+/**
+ * Handles incoming food photos.
+ * Uses manual URL construction to bypass grammy-files type issues.
+ */
+export async function handlePhoto(ctx: BotContext) {
   const telegramId = ctx.from?.id;
   if (!telegramId) return;
 
@@ -21,17 +24,22 @@ export async function handlePhoto(ctx: BotContext & FileFlavor<Context>) {
   const waitMsg = await ctx.reply("📸 *Analyzing your photo...*", { parse_mode: "Markdown" });
 
   try {
-    const file = await ctx.getFile();
-    const url = file.getUrl();
+    // Get file info from Telegram
+    const file = await ctx.api.getFile(photo.file_id);
+    
+    // Construct the direct download URL manually
+    // Format: https://api.telegram.org/file/bot<token>/<file_path>
+    const url = `https://api.telegram.org/file/bot${config.botToken}/${file.file_path}`;
     
     // Download image
     const response = await fetch(url);
+    if (!response.ok) throw new Error("Failed to download image from Telegram");
+    
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    const mimeType = "image/jpeg"; // Telegram photos are JPEGs
+    const mimeType = "image/jpeg";
 
-    // For now, let's assume it's a meal log unless we add a menu mode later
-    // In future, we could add buttons: [Meal Log] [Menu Review]
+    // Call Gemini Vision Service
     const analysis = await analyzeFoodImage(buffer, mimeType);
 
     if (!analysis) {

@@ -4,5 +4,7 @@ import { Context, SessionFlavor } from "grammy";
 // Session data (extend as needed in future phases)
 interface SessionData {}
 
-// Outer context type (with ConversationFlavor + Session installed for the middleware tree)
-export type BotContext = Context & ConversationFlavor<Context> & SessionFlavor<SessionData>;
+// Outer context type (Simplified for Phase 2 stability)
+export type BotContext = Context & 
+  ConversationFlavor<Context> & 
+  SessionFlavor<SessionData>;

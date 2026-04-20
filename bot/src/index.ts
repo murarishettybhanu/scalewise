@@ -1,6 +1,5 @@
 import { Bot, session } from "grammy";
 import { conversations, createConversation } from "@grammyjs/conversations";
-import { hydrateFiles } from "@grammyjs/files";
 import { config } from "./config";
 import { connectDatabase } from "./models/db";
 import { onboardingConversation } from "./conversations/onboarding";
@@ -18,11 +17,6 @@ import type { BotContext } from "./types";
 // ─── Initialize Bot ──────────────────────────────────────
 
 const bot = new Bot<BotContext>(config.botToken);
-
-// ─── Plugins ─────────────────────────────────────────────
-
-// Add file hydration for downloads (needed for Gemini)
-bot.api.config.use(hydrateFiles(bot.token));
 
 // ─── Middleware ──────────────────────────────────────────
 
