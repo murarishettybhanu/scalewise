@@ -1,7 +1,7 @@
 import cron from "node-cron";
 import { Bot, Api, RawApi } from "grammy";
 import { Profile } from "../models";
-import { generateMorningBlueprint } from "./dietEngine";
+import { generateMorningBlueprint, getProteinNudge } from "./dietEngine";
 import type { BotContext } from "../types";
 
 /**
@@ -9,7 +9,6 @@ import type { BotContext } from "../types";
  */
 export function initScheduler(bot: Bot<BotContext>) {
   // Morning Blueprint at 7:00 AM daily
-  // Cron format: minute hour day-of-month month day-of-week
   cron.schedule("0 7 * * *", async () => {
     console.log("⏰ Running Morning Blueprint cron job...");
     
@@ -28,13 +27,29 @@ export function initScheduler(bot: Bot<BotContext>) {
       console.error("Critical error in Morning Blueprint cron:", error);
     }
   }, {
-    timezone: "Asia/Kolkata" // Setting to India time as default, can be made per-user later
+    timezone: "Asia/Kolkata"
   });
 
-  // Hourly Protein Nudge (between 9 AM and 9 PM)
+  // Hourly Protein Nudge check (every 2 hours between 9 AM and 9 PM)
   cron.schedule("0 9-21/2 * * *", async () => {
-    console.log("⏰ Checking for Protein Nudges...");
-    // Logic for protein nudges can be added here
+    console.log("⏰ Running Protein Nudge check...");
+    
+    try {
+      const profiles = await Profile.find({});
+      
+      for (const profile of profiles) {
+        try {
+          const nudge = await getProteinNudge(profile.telegramId);
+          if (nudge) {
+            await bot.api.sendMessage(profile.telegramId, nudge, { parse_mode: "Markdown" });
+          }
+        } catch (err) {
+          console.error(`Failed to send nudge to ${profile.telegramId}:`, err);
+        }
+      }
+    } catch (error) {
+      console.error("Critical error in Protein Nudge cron:", error);
+    }
   }, {
     timezone: "Asia/Kolkata"
   });

@@ -71,7 +71,6 @@ export async function getRemainingPlan(telegramId: number): Promise<string> {
   if (status.remaining <= 0) {
     return "🚨 *Budget Exhausted!* You've reached your calorie limit for today. Focus on ultra-low-calorie hydration (water, black coffee/tea) if still hungry.";
   }
-
   return `
 📊 *DAILY STATUS*
 🔥 Calories: ${status.consumed} / ${status.totalTarget} 
@@ -82,4 +81,36 @@ export async function getRemainingPlan(telegramId: number): Promise<string> {
 
 _Tip: Focus your remaining ${status.remaining} calories on high-protein sources to hit your goal!_
   `;
+}
+
+/**
+ * Checks if a user needs a protein nudge and returns a message if they do.
+ */
+export async function getProteinNudge(telegramId: number): Promise<string | null> {
+  const status = await getTodaysStatus(telegramId);
+  if (!status) return null;
+
+  const hour = new Date().getHours();
+  
+  // Logic: If it's past 4 PM and they have consumed less than 40% of protein
+  if (hour >= 16 && status.proteinConsumed < (status.proteinTarget * 0.4)) {
+    return `
+🕒 *Protein Check-in!*
+
+You've only hit ${Math.round((status.proteinConsumed / status.proteinTarget) * 100)}% of your protein goal today. 
+
+💡 *Quick Fix:* Grab some Greek yogurt, a protein shake, or a handful of roasted chana to catch up! 🥩
+    `;
+  }
+
+  // If it's past 8 PM and they are still under 70%
+  if (hour >= 20 && status.proteinConsumed < (status.proteinTarget * 0.7)) {
+    return `
+🌙 *Evening Protein Nudge*
+
+You still have ${status.proteinRemaining}g of protein left for the day. Can you add some paneer, eggs, or lentils to your dinner? 💪
+    `;
+  }
+
+  return null;
 }

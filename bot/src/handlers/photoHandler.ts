@@ -17,15 +17,24 @@ export async function handlePhoto(ctx: BotContext) {
     return;
   }
 
-  // Get the largest photo
+  // Get the largest photo or a document
   const photo = ctx.message?.photo?.pop();
-  if (!photo) return;
+  const document = ctx.message?.document;
+  
+  const fileId = photo?.file_id || document?.file_id;
+  if (!fileId) return;
+
+  // If it's a document, check if it's an image
+  if (document && !document.mime_type?.startsWith("image/")) {
+    await ctx.reply("Please send an image file (JPEG/PNG).");
+    return;
+  }
 
   const waitMsg = await ctx.reply("📸 *Analyzing your photo...*", { parse_mode: "Markdown" });
 
   try {
     // Get file info from Telegram
-    const file = await ctx.api.getFile(photo.file_id);
+    const file = await ctx.api.getFile(fileId);
     
     // Construct the direct download URL manually
     // Format: https://api.telegram.org/file/bot<token>/<file_path>

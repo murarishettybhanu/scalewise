@@ -75,7 +75,7 @@ bot.callbackQuery("cancel_delete", async (ctx) => {
 
 // ─── Fallback ───────────────────────────────────────────
 
-bot.on("message", async (ctx) => {
+bot.on("message:text", async (ctx) => {
   await ctx.reply(
     "I didn't understand that. Use /help to see available commands. 🤖"
   );
