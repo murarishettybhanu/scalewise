@@ -2,8 +2,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { config } from "../config";
 
 const genAI = new GoogleGenerativeAI(config.geminiApiKey);
-// Using stable 1.5 Flash for high availability
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+// Using the cutting-edge 3.1 Flash-Lite Preview
+const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
 
 export interface ParsedActivity {
   activity: string;

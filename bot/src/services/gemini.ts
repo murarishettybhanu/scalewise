@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { config } from "../config";
 
 const genAI = new GoogleGenerativeAI(config.geminiApiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
 
 export interface FoodAnalysis {
   dishName: string;
@@ -53,11 +53,11 @@ export async function analyzeFoodImage(imageBuffer: Buffer, mimeType: string): P
 
     const response = await result.response;
     const text = response.text();
-    
+
     // Extract JSON from response (Gemini sometimes wraps in markdown blocks)
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return null;
-    
+
     return JSON.parse(jsonMatch[0]) as FoodAnalysis;
   } catch (error) {
     console.error("Gemini Analysis Error:", error);
@@ -145,10 +145,10 @@ export async function parseFoodText(text: string): Promise<FoodAnalysis | null> 
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const responseText = response.text();
-    
+
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return null;
-    
+
     return JSON.parse(jsonMatch[0]) as FoodAnalysis;
   } catch (error) {
     console.error("Gemini Text Parsing Error:", error);
