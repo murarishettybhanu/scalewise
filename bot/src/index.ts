@@ -16,6 +16,7 @@ import { logPantryConversation } from "./conversations/pantry";
 import { manualLogConversation } from "./conversations/manualLog";
 import { manageCheatConversation } from "./conversations/cheat";
 import { handlePhoto } from "./handlers/photoHandler";
+import { handleCallbackQuery } from "./handlers/callbackHandler";
 import { initScheduler } from "./services/scheduler";
 import { User, Profile, DailyLog } from "./models";
 import type { BotContext } from "./types";
@@ -57,7 +58,8 @@ bot.command("help", helpCommand);
 
 // ─── Media Handlers ─────────────────────────────────────
 
-bot.on(":photo", handlePhoto);
+bot.on("message:photo", handlePhoto);
+bot.on("callback_query:data", handleCallbackQuery);
 
 // ─── Callback Queries ───────────────────────────────────
 

@@ -12,9 +12,13 @@ if [ -f ~/scalewise.env ]; then
     echo "🔐 Loaded GEMINI_API_KEY from local .env"
 fi
 
-# Fetch from metadata ONLY if not set locally
+# Fetch from metadata ONLY if not set locally AND if it exists
 if [ -z "$GEMINI_API_KEY" ]; then
-    GEMINI_API_KEY=$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/GEMINI_API_KEY)
+    # --fail makes curl return non-zero on 404, so we don't capture the HTML error
+    METADATA_KEY=$(curl -s -f -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/GEMINI_API_KEY)
+    if [ $? -eq 0 ]; then
+        GEMINI_API_KEY=$METADATA_KEY
+    fi
 fi
 
 # 2. Configure Docker to use Google Artifact Registry

@@ -236,45 +236,57 @@ export async function cheatCommand(ctx: BotContext): Promise<void> {
 // ─── /log command ───────────────────────────────────────
 
 export async function logCommand(ctx: BotContext): Promise<void> {
-  const text = ctx.message?.text?.replace("/log", "").trim();
-  if (!text) {
-    await ctx.conversation.enter("manualLog");
+  // Use regex to strip the command including optional @botname
+  const text = ctx.message?.text?.replace(/^\/log(@\w+)?\s*/, "").trim();
+  
+  // If user provided text directly, process it instantly
+  if (text) {
+    const telegramId = ctx.from!.id;
+    const waitMsg = await ctx.reply("🥗 *Analyzing your meal...*", { parse_mode: "Markdown" });
+    const analysis = await parseFoodText(text);
+    
+    if (!analysis) {
+      await ctx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, "❌ Sorry, I couldn't understand that meal description.");
+      return;
+    }
+
+    const today = new Date().toISOString().split("T")[0];
+    await DailyLog.create({
+      telegramId,
+      date: today,
+      dishName: analysis.dishName,
+      calories: analysis.calories,
+      protein: analysis.protein,
+      carbs: analysis.carbs,
+      fat: analysis.fat,
+      isManual: true
+    });
+
+    const response = `🍱 *Meal Logged!*\n✅ Dish: ${analysis.dishName}\n🔥 Calories: ${analysis.calories} kcal\n🥩 Protein: ${analysis.protein}g`;
+    await ctx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, response, { parse_mode: "Markdown" });
     return;
   }
 
-  const telegramId = ctx.from!.id;
-  const waitMsg = await ctx.reply("🥗 *Analyzing your meal...*", { parse_mode: "Markdown" });
-
-  const analysis = await parseFoodText(text);
-  if (!analysis) {
-    await ctx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, "❌ Sorry, I couldn't understand that meal description. Try being more specific about quantities!");
-    return;
-  }
-
-  const today = new Date().toISOString().split("T")[0];
-  await DailyLog.create({
-    telegramId,
-    date: today,
-    dishName: analysis.dishName,
-    calories: analysis.calories,
-    protein: analysis.protein,
-    carbs: analysis.carbs,
-    fat: analysis.fat,
-    isManual: true
-  });
-
-  const response = `
-🍱 *Meal Logged!*
-✅ Dish: ${analysis.dishName}
-🔥 Calories: ${analysis.calories} kcal
-🥩 Protein: ${analysis.protein}g
-🥗 Carbs: ${analysis.carbs}g
-🥑 Fat: ${analysis.fat}g
-
-_Confidence: ${analysis.confidence}_
-  `;
-
-  await ctx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, response, { parse_mode: "Markdown" });
+  // Otherwise, show the interactive options menu
+  await ctx.reply(
+    "🍱 *How would you like to log your meal?*\n\n" +
+    "1️⃣ *AI Vision Auditor* 📸\nJust send me a photo of your plate, and I'll estimate the macros automatically.\n\n" +
+    "2️⃣ *Manual Text Log* ✍️\nType out what you ate (e.g., '2 idlis and a coffee').",
+    {
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "✍️ Write Description", callback_data: "start_manual_log" },
+            { text: "📸 Photo Guide", callback_data: "photo_log_help" }
+          ],
+          [
+            { text: "📊 View Today's Status", callback_data: "view_diet_status" }
+          ]
+        ]
+      }
+    }
+  );
 }
 
 // ─── /diet command ──────────────────────────────────────
