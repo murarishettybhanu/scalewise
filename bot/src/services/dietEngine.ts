@@ -1,4 +1,4 @@
-import { Profile, DailyLog, IProfile } from "../models";
+import { Profile, DailyLog, ActivityLog, IProfile } from "../models";
 
 export interface DietStatus {
   totalTarget: number;
@@ -7,6 +7,7 @@ export interface DietStatus {
   proteinTarget: number;
   proteinConsumed: number;
   proteinRemaining: number;
+  activityBurned: number;
 }
 
 /**
@@ -17,18 +18,41 @@ export async function getTodaysStatus(telegramId: number): Promise<DietStatus | 
   if (!profile) return null;
 
   const today = new Date().toISOString().split("T")[0];
-  const log = await DailyLog.findOne({ telegramId, date: today });
+  
+  // Parallel fetch for logs
+  const [mealLog, activityLogs] = await Promise.all([
+    DailyLog.findOne({ telegramId, date: today }),
+    ActivityLog.find({ telegramId, date: today })
+  ]);
 
-  const consumed = log?.totalCalories || 0;
-  const proteinConsumed = log?.totalProtein || 0;
+  const consumed = mealLog?.totalCalories || 0;
+  const proteinConsumed = mealLog?.totalProtein || 0;
+  
+  // Sum up all activities for today
+  const activityBurned = activityLogs.reduce((sum, log) => sum + log.caloriesBurned, 0);
+
+  // --- CALORIE BANKING LOGIC ---
+  const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  const todayDay = days[new Date().getDay()];
+  
+  let targetCalories = profile.targetCalories;
+  
+  // If calorie banking is active and today isn't the cheat day, deduct the bank amount
+  if (profile.calorieBankingActive && profile.cheatDay && todayDay !== profile.cheatDay) {
+    targetCalories -= 150; // Bank 150 kcal per day
+  }
+
+  // Remaining budget includes calories earned from exercise
+  const remaining = Math.max(0, (targetCalories + activityBurned) - consumed);
 
   return {
-    totalTarget: profile.targetCalories,
+    totalTarget: targetCalories,
     consumed,
-    remaining: Math.max(0, profile.targetCalories - consumed),
+    remaining,
     proteinTarget: profile.targetProtein,
     proteinConsumed,
     proteinRemaining: Math.max(0, profile.targetProtein - proteinConsumed),
+    activityBurned
   };
 }
 

@@ -243,14 +243,17 @@ export async function onboardingConversation(
   const dietLabel = dietType.charAt(0).toUpperCase() + dietType.slice(1);
 
   await ctx.reply(
-    `✅ *Profile Complete!* Here's your plan:\n\n` +
+    `✅ *Profile Complete!* Here's your personalized target:\n\n` +
       `${goalEmoji} *Goal:* ${goal === "deficit" ? "Fat Loss" : "Weight Gain"}\n` +
-      `📊 *BMR:* ${targets.bmr} kcal/day\n` +
-      `⚡ *TDEE:* ${targets.tdee} kcal/day\n` +
       `🎯 *Daily Calories:* ${targets.targetCalories} kcal\n` +
       `🥩 *Daily Protein:* ${targets.targetProtein}g\n` +
       `🍽️ *Diet:* ${dietLabel}${region ? ` (${region})` : ""}\n\n` +
-      `You're all set! Use /help to see available commands.`,
+      `🚀 *ScaleWise AI Superpowers:*\n\n` +
+      `📸 *AI Vision Auditor*: Just send a *photo* of your food to auto-log your calories and protein.\n\n` +
+      `📊 *Daily Budget*: Use /diet to see what's left for your day.\n\n` +
+      `⚖️ *Weight Tracker*: Use \`/weight <kg>\` daily to stay on track.\n\n` +
+      `🍳 *Kitchen Assistant*: Need a recipe? Try \`/pantry paneer, spinach, tomato\` for high-protein ideas.\n\n` +
+      `⏰ *Morning Blueprint*: Check back at *7:00 AM* every day for your customized meal plan nudge!`,
     { parse_mode: "Markdown" }
   );
 }

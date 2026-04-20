@@ -36,6 +36,21 @@ export interface IProfile extends Document {
   tdee: number;         // kcal/day (calculated)
   targetCalories: number; // kcal/day (adjusted for goal)
   targetProtein: number;  // grams/day
+  cheatDay?: string;     // e.g. "saturday"
+  calorieBankingActive: boolean;
+  bankedCalories: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IActivityLog extends Document {
+  telegramId: number;
+  date: string;         // YYYY-MM-DD
+  activityName: string;
+  durationMinutes: number;
+  caloriesBurned: number;
+  metValue: number;
+  loggedAt: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -104,9 +119,27 @@ const ProfileSchema = new Schema<IProfile>(
     tdee: { type: Number, required: true },
     targetCalories: { type: Number, required: true },
     targetProtein: { type: Number, required: true },
+    cheatDay: { type: String, enum: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] },
+    calorieBankingActive: { type: Boolean, default: false },
+    bankedCalories: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
+
+const ActivityLogSchema = new Schema<IActivityLog>(
+  {
+    telegramId: { type: Number, required: true, index: true },
+    date: { type: String, required: true },
+    activityName: { type: String, required: true },
+    durationMinutes: { type: Number, required: true },
+    caloriesBurned: { type: Number, required: true },
+    metValue: { type: Number, required: true },
+    loggedAt: { type: Date, default: Date.now },
+  },
+  { timestamps: true }
+);
+
+ActivityLogSchema.index({ telegramId: 1, date: 1 });
 
 const MealSubSchema = new Schema(
   {
@@ -155,3 +188,4 @@ export const User: Model<IUser> = mongoose.model<IUser>("User", UserSchema);
 export const Profile: Model<IProfile> = mongoose.model<IProfile>("Profile", ProfileSchema);
 export const DailyLog: Model<IDailyLog> = mongoose.model<IDailyLog>("DailyLog", DailyLogSchema);
 export const WeightLog: Model<IWeightLog> = mongoose.model<IWeightLog>("WeightLog", WeightLogSchema);
+export const ActivityLog: Model<IActivityLog> = mongoose.model<IActivityLog>("ActivityLog", ActivityLogSchema);

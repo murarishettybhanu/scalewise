@@ -1,8 +1,10 @@
 import { Context } from "grammy";
-import { User, Profile, DailyLog, WeightLog } from "../models";
+import { User, Profile, DailyLog, WeightLog, ActivityLog } from "../models";
 import type { BotContext } from "../types";
 import { getRemainingPlan } from "../services/dietEngine";
 import { generateRecipeFromPantry } from "../services/gemini";
+import { parseActivityText, calculateActivityBurn } from "../services/activityService";
+import { calculateStepTax, getUrgeSurfingGuide, checkSodiumSpike } from "../services/behavioralService";
 
 // ─── /start command ──────────────────────────────────────
 
@@ -10,7 +12,6 @@ export async function startCommand(ctx: BotContext): Promise<void> {
   const telegramId = ctx.from!.id;
   const firstName = ctx.from!.first_name;
 
-  // Upsert user record
   await User.findOneAndUpdate(
     { telegramId },
     {
@@ -22,7 +23,6 @@ export async function startCommand(ctx: BotContext): Promise<void> {
     { upsert: true, new: true }
   );
 
-  // Check if already onboarded
   const profile = await Profile.findOne({ telegramId });
 
   if (profile) {
@@ -35,7 +35,6 @@ export async function startCommand(ctx: BotContext): Promise<void> {
     return;
   }
 
-  // Start onboarding
   await ctx.conversation.enter("onboarding");
 }
 
@@ -67,6 +66,8 @@ export async function profileCommand(ctx: BotContext): Promise<void> {
       `📏 ${profile.height} cm | ⚖️ ${profile.weight} kg\n` +
       `🏃 ${activityLabels[profile.activityLevel]}\n` +
       `🍽️ ${dietLabel}${profile.region ? ` (${profile.region})` : ""}\n\n` +
+      `📦 *Cheat Day:* ${profile.cheatDay ? profile.cheatDay.charAt(0).toUpperCase() + profile.cheatDay.slice(1) : "Not set"}\n` +
+      `💰 *Banked Calories:* ${profile.bankedCalories} kcal\n\n` +
       `─── *Nutrition Targets* ───\n` +
       `📊 BMR: ${profile.bmr} kcal\n` +
       `⚡ TDEE: ${profile.tdee} kcal\n` +
@@ -126,22 +127,149 @@ export async function weightCommand(ctx: BotContext): Promise<void> {
   const weight = parseFloat(match[1]);
   const today = new Date().toISOString().split("T")[0];
 
+  const spikeAlert = await checkSodiumSpike(telegramId, weight);
+
   await WeightLog.findOneAndUpdate(
     { telegramId, date: today },
     { weight },
     { upsert: true }
   );
 
-  // Update current profile weight as well
   await Profile.findOneAndUpdate({ telegramId }, { weight });
 
-  await ctx.reply(`⚖️ *Weight Logged:* ${weight} kg\nYour profile has been updated!`, { parse_mode: "Markdown" });
+  let response = `⚖️ *Weight Logged:* ${weight} kg\nYour profile has been updated!`;
+  if (spikeAlert) {
+    response += `\n\n${spikeAlert}`;
+  }
+
+  await ctx.reply(response, { parse_mode: "Markdown" });
+}
+
+// ─── /activity command (PHASE 3) ─────────────────────────
+
+export async function activityCommand(ctx: BotContext): Promise<void> {
+  const text = ctx.message?.text?.replace("/activity", "").trim();
+  if (!text) {
+    await ctx.reply("Tell me what you did, e.g. `/activity I walked briskly for 30 mins`", { parse_mode: "Markdown" });
+    return;
+  }
+
+  const telegramId = ctx.from!.id;
+  const profile = await Profile.findOne({ telegramId });
+  if (!profile) return;
+
+  const waitMsg = await ctx.reply("🏃 *Parsing your activity...*", { parse_mode: "Markdown" });
+
+  const parsed = await parseActivityText(text);
+  if (!parsed || parsed.duration <= 0) {
+    await ctx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, "❌ Sorry, I couldn't understand that activity. Try being more specific about what you did and for how long.");
+    return;
+  }
+
+  const { calories, met } = calculateActivityBurn(profile.weight, parsed.activity, parsed.duration, parsed.intensity);
+
+  const today = new Date().toISOString().split("T")[0];
+  await ActivityLog.create({
+    telegramId,
+    date: today,
+    activityName: parsed.activity,
+    durationMinutes: parsed.duration,
+    caloriesBurned: calories,
+    metValue: met
+  });
+
+  const response = `
+🏃 *Activity Logged!*
+✅ Activity: ${parsed.activity}
+⏱️ Duration: ${parsed.duration} mins
+🔥 Burned: ${calories} kcal
+
+_Your daily calorie budget has increased by ${calories} kcal!_
+  `;
+
+  await ctx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, response, { parse_mode: "Markdown" });
+}
+
+// ─── /tax command (PHASE 3) ──────────────────────────────
+
+export async function taxCommand(ctx: BotContext): Promise<void> {
+  const food = ctx.message?.text?.replace("/tax", "").trim();
+  if (!food) {
+    await ctx.reply("What food do you want to calculate the 'tax' for? e.g. `/tax 1 samosa`", { parse_mode: "Markdown" });
+    return;
+  }
+
+  const profile = await Profile.findOne({ telegramId: ctx.from!.id });
+  const { calories, steps, durationMin } = await calculateStepTax(food, profile?.weight || 70);
+
+  const response = `
+🧾 *The Tax Negotiator*
+
+🍴 Food: ${food}
+🔥 Est. Calories: ${calories} kcal
+
+🏃 *Walking Tax:*
+👣 Approx. ${steps.toLocaleString()} brisk steps
+⏱️ ~${durationMin} mins of brisk walking
+
+_Is it worth it? Use /crave if the urge is too strong!_
+  `;
+
+  await ctx.reply(response, { parse_mode: "Markdown" });
+}
+
+// ─── /crave command (PHASE 3) ───────────────────────────
+
+export async function craveCommand(ctx: BotContext): Promise<void> {
+  const craving = ctx.message?.text?.replace("/crave", "").trim() || "something tasty";
+  const guide = await getUrgeSurfingGuide(craving);
+  
+  await ctx.reply(`🌊 *Urge Surfing Intervention*\n\n${guide}`, { parse_mode: "Markdown" });
+}
+
+// ─── /cheat command (PHASE 3) ───────────────────────────
+
+export async function cheatCommand(ctx: BotContext): Promise<void> {
+  const text = ctx.message?.text?.replace("/cheat", "").trim().toLowerCase();
+  const telegramId = ctx.from!.id;
+  
+  const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+
+  if (!text) {
+    const profile = await Profile.findOne({ telegramId });
+    if (!profile) return;
+
+    await ctx.reply(
+      `🎁 *Cheat Day Manager*\n\n` +
+      `📅 Scheduled: ${profile.cheatDay ? profile.cheatDay.charAt(0).toUpperCase() + profile.cheatDay.slice(1) : "Not set"}\n` +
+      `🏦 Banked: ${profile.bankedCalories} kcal\n\n` +
+      `To set a day: \`/cheat set saturday\`\n` +
+      `To toggle banking: \`/cheat banking on/off\``,
+      { parse_mode: "Markdown" }
+    );
+    return;
+  }
+
+  if (text.startsWith("set ")) {
+    const day = text.replace("set ", "").trim();
+    if (!days.includes(day)) {
+      await ctx.reply("Please specify a valid day (e.g., `/cheat set saturday`)", { parse_mode: "Markdown" });
+      return;
+    }
+
+    await Profile.findOneAndUpdate({ telegramId }, { cheatDay: day, calorieBankingActive: true });
+    await ctx.reply(`✅ Cheat day set to *${day.charAt(0).toUpperCase() + day.slice(1)}* and calorie banking activated!`, { parse_mode: "Markdown" });
+  } else if (text === "banking on" || text === "banking off") {
+    const active = text === "banking on";
+    await Profile.findOneAndUpdate({ telegramId }, { calorieBankingActive: active });
+    await ctx.reply(`🏦 Calorie banking is now *${active ? "ON" : "OFF"}*.`, { parse_mode: "Markdown" });
+  }
 }
 
 // ─── /log command ───────────────────────────────────────
 
 export async function logCommand(ctx: BotContext): Promise<void> {
-  await ctx.reply("To log a meal, you can:\n\n1️⃣ Send a *photo* of your food 📸\n2️⃣ Use `/log <description>` (e.g. `/log 2 eggs and toast`) 📝\n\n_Manual text logging coming soon in Phase 3 with full database parsing!_", { parse_mode: "Markdown" });
+  await ctx.reply("To log a meal, you can:\n\n1️⃣ Send a *photo* of your food 📸\n2️⃣ Use `/log <description>` (incoming Phase 3 update!) 📝", { parse_mode: "Markdown" });
 }
 
 // ─── /diet command ──────────────────────────────────────
@@ -175,14 +303,15 @@ export async function pantryCommand(ctx: BotContext): Promise<void> {
 export async function helpCommand(ctx: BotContext): Promise<void> {
   await ctx.reply(
     `🤖 *ScaleWise AI — Commands*\n\n` +
-      `/start — Start onboarding or welcome back\n` +
-      `/profile — View your profile & targets\n` +
+      `/profile — View your targets & banking\n` +
       `/diet — See today's remaining budget\n` +
-      `/weight <kg> — Log your daily weight\n` +
-      `/log — Tips for logging meals\n` +
-      `/update — Update specific profile attributes\n` +
-      `/delete — Delete all your data\n` +
-      `/help — Show this help message\n\n` +
+      `/activity — Log movement (e.g. 30min walk)\n` +
+      `/weight — Log daily weight & check spikes\n` +
+      `/tax <food> — Calculate Step Tax for a treat\n` +
+      `/crave — Handle an urge mindfulness style\n` +
+      `/cheat — Schedule cheat day & bank calories\n` +
+      `/pantry — Recipe ideas from ingredients\n` +
+      `/help — Show this message\n\n` +
       `📸 *Pro-tip:* Just send a photo of your food to auto-log macros!`,
     { parse_mode: "Markdown" }
   );

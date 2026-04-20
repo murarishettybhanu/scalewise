@@ -6,7 +6,8 @@ import { onboardingConversation } from "./conversations/onboarding";
 import { 
   startCommand, profileCommand, helpCommand, 
   updateCommand, deleteCommand, weightCommand, 
-  logCommand, dietCommand, pantryCommand 
+  logCommand, dietCommand, pantryCommand,
+  activityCommand, taxCommand, craveCommand, cheatCommand
 } from "./commands";
 import { updateProfileConversation } from "./conversations/updateProfile";
 import { handlePhoto } from "./handlers/photoHandler";
@@ -35,6 +36,10 @@ bot.command("profile", profileCommand);
 bot.command("update", updateCommand);
 bot.command("delete", deleteCommand);
 bot.command("weight", weightCommand);
+bot.command("activity", activityCommand);
+bot.command("tax", taxCommand);
+bot.command("crave", craveCommand);
+bot.command("cheat", cheatCommand);
 bot.command("log", logCommand);
 bot.command("diet", dietCommand);
 bot.command("pantry", pantryCommand);
