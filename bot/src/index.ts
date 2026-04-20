@@ -10,6 +10,7 @@ import {
   activityCommand, taxCommand, craveCommand, cheatCommand
 } from "./commands";
 import { updateProfileConversation } from "./conversations/updateProfile";
+import { logActivityConversation } from "./conversations/activity";
 import { handlePhoto } from "./handlers/photoHandler";
 import { initScheduler } from "./services/scheduler";
 import { User, Profile, DailyLog } from "./models";
@@ -28,6 +29,7 @@ bot.use(session({ initial: () => ({}) }));
 bot.use(conversations());
 bot.use(createConversation(onboardingConversation, "onboarding"));
 bot.use(createConversation(updateProfileConversation, "updateProfile"));
+bot.use(createConversation(logActivityConversation, "logActivity"));
 
 // ─── Command Handlers ───────────────────────────────────
 

@@ -150,7 +150,7 @@ export async function weightCommand(ctx: BotContext): Promise<void> {
 export async function activityCommand(ctx: BotContext): Promise<void> {
   const text = ctx.message?.text?.replace("/activity", "").trim();
   if (!text) {
-    await ctx.reply("Tell me what you did, e.g. `/activity I walked briskly for 30 mins`", { parse_mode: "Markdown" });
+    await ctx.conversation.enter("logActivity");
     return;
   }
 
