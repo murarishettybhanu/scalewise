@@ -12,8 +12,8 @@ export async function updateProfileConversation(
 ): Promise<void> {
   const telegramId = ctx.from!.id;
   
-  // Fetch current profile
-  const profile = await conversation.external(() => Profile.findOne({ telegramId }));
+  // Fetch current profile (using .lean() for a plain JS object)
+  const profile = await conversation.external(() => Profile.findOne({ telegramId }).lean());
   if (!profile) {
     await ctx.reply("Profile not found. Please /start first.");
     return;
@@ -145,13 +145,16 @@ export async function updateProfileConversation(
 
   // 4. Merge and Recalculate
   const newProfile = {
-    weight: updateData.weight ?? profile.weight,
-    height: updateData.height ?? profile.height,
-    age: updateData.age ?? profile.age,
+    weight: Number(updateData.weight ?? profile.weight),
+    height: Number(updateData.height ?? profile.height),
+    age: Number(updateData.age ?? profile.age),
     gender: profile.gender,
     activityLevel: updateData.activityLevel ?? profile.activityLevel,
     goal: updateData.goal ?? profile.goal,
   };
+
+  // Debug log to catch NaN issues
+  console.log("Recalculating targets with:", newProfile);
 
   const targets = calculateAllTargets(
     newProfile.weight,
@@ -161,6 +164,12 @@ export async function updateProfileConversation(
     newProfile.activityLevel,
     newProfile.goal
   );
+
+  if (isNaN(targets.bmr)) {
+    console.error("❌ Calculation resulted in NaN!", { newProfile, targets });
+    await ctx.reply("⚠️ Sorry, there was an error updating your targets. Please check your inputs.");
+    return;
+  }
 
   // 5. Save and Notify
   await conversation.external(async () => {
