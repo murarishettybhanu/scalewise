@@ -161,8 +161,8 @@ export async function activityCommand(ctx: BotContext): Promise<void> {
   const waitMsg = await ctx.reply("🏃 *Parsing your activity...*", { parse_mode: "Markdown" });
 
   const parsed = await parseActivityText(text);
-  if (!parsed || parsed.duration <= 0) {
-    await ctx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, "❌ Sorry, I couldn't understand that activity. Try being more specific about what you did and for how long.");
+  if (!parsed || !parsed.activity || parsed.duration <= 0) {
+    await ctx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, "❌ Sorry, I couldn't understand that activity. Try being more specific about what you did and for how long (e.g. '30 mins walk').");
     return;
   }
 
@@ -319,23 +319,23 @@ export async function pantryCommand(ctx: BotContext): Promise<void> {
 
 export async function helpCommand(ctx: BotContext): Promise<void> {
   await ctx.reply(
-    `🤖 *ScaleWise AI — Command Center*\n\n` +
+    `🤖 *ScaleWise AI — Interactive Command Center*\n\n` +
       `🥗 *Diet & Tracking*\n` +
-      `• /log <meal> — Log food (Photo or Text)\n` +
+      `• /log — Start a guided meal log (Photo or Text)\n` +
       `• /diet — See today's remaining budget\n` +
-      `• /weight <kg> — Log daily weight\n` +
-      `• /pantry — Recipe ideas from items\n\n` +
+      `• /weight <kg> — Log weight & check for spikes\n` +
+      `• /pantry — Get AI recipe ideas from ingredients\n\n` +
       `🏃 *Activity & Movement*\n` +
-      `• /activity <desc> — Log movement (e.g. 30m walk)\n` +
-      `• /tax <food> — Calculate walking "tax" for food\n\n` +
+      `• /activity — Guided movement logger\n` +
+      `• /tax — Calculate walking "tax" for any treat\n\n` +
       `🧠 *Mindfulness & Banking*\n` +
-      `• /crave — Handle food urges mindful style\n` +
-      `• /cheat — Schedule cheat day & bank calories\n\n` +
+      `• /crave — Start an interactive urge-surfing session\n` +
+      `• /cheat — Management menu for banked calories\n\n` +
       `⚙️ *Profile Management*\n` +
-      `• /profile — View your targets & banking\n` +
-      `• /update — Update your goals/stats\n` +
-      `• /delete — Permanently delete your data\n\n` +
-      `📸 *Pro-tip:* Just send a photo of your food to auto-log macros!`,
+      `• /profile — View your targets & banking stats\n` +
+      `• /update — Change your goals or stats\n` +
+      `• /delete — Wipe all your data permanently\n\n` +
+      `💡 *Tip:* You can just send a command and I'll ask you for the details in the next message!`,
     { parse_mode: "Markdown" }
   );
 }

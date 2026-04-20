@@ -30,8 +30,8 @@ export async function logActivityConversation(
   // Use the same logic as the command version
   const parsed = await conversation.external(() => parseActivityText(text));
   
-  if (!parsed || Number(parsed.duration) <= 0) {
-    await activityCtx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, "❌ Sorry, I couldn't understand that. Try something like '30 mins walk' or '45 mins cricket'.");
+  if (!parsed || !parsed.activity || Number(parsed.duration) <= 0) {
+    await activityCtx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, "❌ Sorry, I couldn't understand that. Try being more specific about what you did and for how long (e.g. '30 mins walk').");
     return;
   }
 

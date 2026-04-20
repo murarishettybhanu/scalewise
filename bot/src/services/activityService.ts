@@ -36,7 +36,8 @@ export const MET_VALUES: Record<string, number> = {
  * Maps parsed intensity to a specific MET key.
  */
 function getMetKey(activity: string, intensity: string): string {
-  const base = activity.toLowerCase();
+  const base = (activity || "").toLowerCase();
+  const level = (intensity || "moderate").toLowerCase();
   
   if (base.includes("walk")) {
     return intensity === "high" ? "walking_brisk" : "walking_slow";
