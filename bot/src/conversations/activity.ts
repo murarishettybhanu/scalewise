@@ -21,7 +21,7 @@ export async function logActivityConversation(
 
   const waitMsg = await activityCtx.reply("🏃 *Parsing your activity...*", { parse_mode: "Markdown" });
 
-  const profile = await conversation.external(() => Profile.findOne({ telegramId }));
+  const profile = await conversation.external(() => Profile.findOne({ telegramId }).lean());
   if (!profile) {
     await activityCtx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, "❌ Profile not found. Please /start first.");
     return;
@@ -30,7 +30,7 @@ export async function logActivityConversation(
   // Use the same logic as the command version
   const parsed = await conversation.external(() => parseActivityText(text));
   
-  if (!parsed || parsed.duration <= 0) {
+  if (!parsed || Number(parsed.duration) <= 0) {
     await activityCtx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, "❌ Sorry, I couldn't understand that. Try something like '30 mins walk' or '45 mins cricket'.");
     return;
   }
@@ -44,14 +44,16 @@ export async function logActivityConversation(
 
   const today = new Date().toISOString().split("T")[0];
   
-  await conversation.external(() => ActivityLog.create({
-    telegramId,
-    date: today,
-    activityName: parsed.activity,
-    durationMinutes: parsed.duration,
-    caloriesBurned: calories,
-    metValue: met
-  }));
+  await conversation.external(async () => {
+    await ActivityLog.create({
+      telegramId,
+      date: today,
+      activityName: parsed.activity,
+      durationMinutes: parsed.duration,
+      caloriesBurned: calories,
+      metValue: met
+    });
+  });
 
   const response = `
 🏃 *Activity Logged!*
