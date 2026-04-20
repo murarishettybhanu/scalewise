@@ -7,8 +7,8 @@ BOT_TOKEN=$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/co
 MONGODB_URI=$(curl -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/attributes/MONGODB_URI)
 
 # 2. Configure Docker to use Google Artifact Registry
-# We use the region us-central1 as planned
-docker-credential-gcr configure-docker --registries=us-central1-docker.pkg.dev
+# Modern way using gcloud instead of the legacy docker-credential-gcr
+gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 
 # 3. Pull the image
 # Note: [PROJECT_ID] will be replaced during the gcloud command
