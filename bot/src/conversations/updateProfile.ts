@@ -47,7 +47,7 @@ export async function updateProfileConversation(
     "cancel_update",
   ]);
 
-  await selection.answer();
+  await selection.answerCallbackQuery();
   const action = selection.callbackQuery.data;
 
   if (action === "cancel_update") {
