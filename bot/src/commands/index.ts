@@ -75,6 +75,41 @@ export async function profileCommand(ctx: BotContext): Promise<void> {
   );
 }
 
+// ─── /update command ────────────────────────────────────
+
+export async function updateCommand(ctx: BotContext): Promise<void> {
+  const telegramId = ctx.from!.id;
+  const profile = await Profile.findOne({ telegramId });
+
+  if (!profile) {
+    await ctx.reply("You haven't set up your profile yet! Use /start to begin.");
+    return;
+  }
+
+  await ctx.conversation.enter("updateProfile");
+}
+
+// ─── /delete command ────────────────────────────────────
+
+export async function deleteCommand(ctx: BotContext): Promise<void> {
+  await ctx.reply(
+    "⚠️ *Warning: Danger Zone*\n\n" +
+      "This will permanently delete your profile and all logged data. You will have to start over if you return.\n\n" +
+      "Are you absolutely sure you want to proceed?",
+    {
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: "✅ Yes, delete everything", callback_data: "confirm_delete_all" },
+            { text: "❌ No, cancel", callback_data: "cancel_delete" },
+          ],
+        ],
+      },
+    }
+  );
+}
+
 // ─── /help command ───────────────────────────────────────
 
 export async function helpCommand(ctx: BotContext): Promise<void> {
@@ -82,8 +117,10 @@ export async function helpCommand(ctx: BotContext): Promise<void> {
     `🤖 *ScaleWise AI — Commands*\n\n` +
       `/start — Start onboarding or welcome back\n` +
       `/profile — View your profile & targets\n` +
+      `/update — Update a specific part of your profile\n` +
+      `/delete — Delete all your data from our system\n` +
       `/help — Show this help message\n\n` +
-      `_More commands coming soon: meal logging, food photo analysis, activity tracking, and more!_`,
+      `_Coming soon: meal logging and food photo analysis!_`,
     { parse_mode: "Markdown" }
   );
 }
