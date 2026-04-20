@@ -1,0 +1,14 @@
+{
+  "name": "scalewise-shared",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared types and constants for ScaleWise AI",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

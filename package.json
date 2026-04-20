@@ -1,23 +1,16 @@
 {
-  "name": "scalewise-bot",
+  "name": "scalewise-ai",
   "version": "1.0.0",
   "private": true,
-  "description": "ScaleWise AI Telegram Bot",
-  "main": "dist/index.js",
+  "description": "ScaleWise AI — Telegram-based AI diet & fitness assistant",
+  "workspaces": [
+    "bot",
+    "webapp",
+    "shared"
+  ],
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js"
-  },
-  "dependencies": {
-    "grammy": "^1.35.0",
-    "@grammyjs/conversations": "^2.0.3",
-    "mongoose": "^8.13.2",
-    "dotenv": "^16.5.0"
-  },
-  "devDependencies": {
-    "typescript": "^5.8.3",
-    "tsx": "^4.19.4",
-    "@types/node": "^22.15.3"
+    "bot:dev": "npm run dev --workspace=bot",
+    "bot:build": "npm run build --workspace=bot",
+    "bot:start": "npm run start --workspace=bot"
   }
 }
