@@ -1,6 +1,8 @@
 import { Context } from "grammy";
-import { User, Profile } from "../models";
+import { User, Profile, DailyLog, WeightLog } from "../models";
 import type { BotContext } from "../types";
+import { getRemainingPlan } from "../services/dietEngine";
+import { generateRecipeFromPantry } from "../services/gemini";
 
 // ─── /start command ──────────────────────────────────────
 
@@ -110,6 +112,64 @@ export async function deleteCommand(ctx: BotContext): Promise<void> {
   );
 }
 
+// ─── /weight command ────────────────────────────────────
+
+export async function weightCommand(ctx: BotContext): Promise<void> {
+  const telegramId = ctx.from!.id;
+  const match = ctx.message?.text?.match(/\/weight\s+(\d+(\.\d+)?)/);
+  
+  if (!match) {
+    await ctx.reply("Please provide your weight, e.g. `/weight 72.5`", { parse_mode: "Markdown" });
+    return;
+  }
+
+  const weight = parseFloat(match[1]);
+  const today = new Date().toISOString().split("T")[0];
+
+  await WeightLog.findOneAndUpdate(
+    { telegramId, date: today },
+    { weight },
+    { upsert: true }
+  );
+
+  // Update current profile weight as well
+  await Profile.findOneAndUpdate({ telegramId }, { weight });
+
+  await ctx.reply(`⚖️ *Weight Logged:* ${weight} kg\nYour profile has been updated!`, { parse_mode: "Markdown" });
+}
+
+// ─── /log command ───────────────────────────────────────
+
+export async function logCommand(ctx: BotContext): Promise<void> {
+  await ctx.reply("To log a meal, you can:\n\n1️⃣ Send a *photo* of your food 📸\n2️⃣ Use `/log <description>` (e.g. `/log 2 eggs and toast`) 📝\n\n_Manual text logging coming soon in Phase 3 with full database parsing!_", { parse_mode: "Markdown" });
+}
+
+// ─── /diet command ──────────────────────────────────────
+
+export async function dietCommand(ctx: BotContext): Promise<void> {
+  const telegramId = ctx.from!.id;
+  const plan = await getRemainingPlan(telegramId);
+  await ctx.reply(plan, { parse_mode: "Markdown" });
+}
+
+// ─── /pantry command ───────────────────────────────────
+
+export async function pantryCommand(ctx: BotContext): Promise<void> {
+  const text = ctx.message?.text?.replace("/pantry", "").trim();
+  if (!text) {
+    await ctx.reply("Tell me what ingredients you have, e.g. `/pantry eggs, spinach, bread`", { parse_mode: "Markdown" });
+    return;
+  }
+
+  const waitMsg = await ctx.reply("🍳 *Generating a recipe for you...*", { parse_mode: "Markdown" });
+  
+  const profile = await Profile.findOne({ telegramId: ctx.from!.id });
+  const targetKcal = profile ? Math.round(profile.targetCalories / 4) : 500;
+  
+  const recipe = await generateRecipeFromPantry(text, targetKcal);
+  await ctx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, recipe, { parse_mode: "Markdown" });
+}
+
 // ─── /help command ───────────────────────────────────────
 
 export async function helpCommand(ctx: BotContext): Promise<void> {
@@ -117,10 +177,13 @@ export async function helpCommand(ctx: BotContext): Promise<void> {
     `🤖 *ScaleWise AI — Commands*\n\n` +
       `/start — Start onboarding or welcome back\n` +
       `/profile — View your profile & targets\n` +
-      `/update — Update a specific part of your profile\n` +
-      `/delete — Delete all your data from our system\n` +
+      `/diet — See today's remaining budget\n` +
+      `/weight <kg> — Log your daily weight\n` +
+      `/log — Tips for logging meals\n` +
+      `/update — Update specific profile attributes\n` +
+      `/delete — Delete all your data\n` +
       `/help — Show this help message\n\n` +
-      `_Coming soon: meal logging and food photo analysis!_`,
+      `📸 *Pro-tip:* Just send a photo of your food to auto-log macros!`,
     { parse_mode: "Markdown" }
   );
 }

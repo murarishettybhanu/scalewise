@@ -1,16 +1,28 @@
 import { Bot, session } from "grammy";
 import { conversations, createConversation } from "@grammyjs/conversations";
+import { hydrateFiles } from "@grammyjs/files";
 import { config } from "./config";
 import { connectDatabase } from "./models/db";
 import { onboardingConversation } from "./conversations/onboarding";
-import { startCommand, profileCommand, helpCommand, updateCommand, deleteCommand } from "./commands";
+import { 
+  startCommand, profileCommand, helpCommand, 
+  updateCommand, deleteCommand, weightCommand, 
+  logCommand, dietCommand, pantryCommand 
+} from "./commands";
 import { updateProfileConversation } from "./conversations/updateProfile";
+import { handlePhoto } from "./handlers/photoHandler";
+import { initScheduler } from "./services/scheduler";
 import { User, Profile, DailyLog } from "./models";
 import type { BotContext } from "./types";
 
 // ─── Initialize Bot ──────────────────────────────────────
 
 const bot = new Bot<BotContext>(config.botToken);
+
+// ─── Plugins ─────────────────────────────────────────────
+
+// Add file hydration for downloads (needed for Gemini)
+bot.api.config.use(hydrateFiles(bot.token));
 
 // ─── Middleware ──────────────────────────────────────────
 
@@ -28,7 +40,15 @@ bot.command("start", startCommand);
 bot.command("profile", profileCommand);
 bot.command("update", updateCommand);
 bot.command("delete", deleteCommand);
+bot.command("weight", weightCommand);
+bot.command("log", logCommand);
+bot.command("diet", dietCommand);
+bot.command("pantry", pantryCommand);
 bot.command("help", helpCommand);
+
+// ─── Media Handlers ─────────────────────────────────────
+
+bot.on(":photo", handlePhoto);
 
 // ─── Callback Queries ───────────────────────────────────
 
@@ -80,6 +100,9 @@ async function main() {
 
   // Connect to MongoDB
   await connectDatabase();
+
+  // Initialize Scheduler
+  initScheduler(bot);
 
   // Start bot (long polling for development, switch to webhooks for production)
   console.log("🤖 Bot is running! Press Ctrl+C to stop.");

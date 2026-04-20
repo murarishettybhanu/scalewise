@@ -60,6 +60,14 @@ export interface IDailyLog extends Document {
   updatedAt: Date;
 }
 
+export interface IWeightLog extends Document {
+  telegramId: number;
+  weight: number;
+  date: string;         // YYYY-MM-DD
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // ─── Schemas ─────────────────────────────────────────
 
 const UserSchema = new Schema<IUser>(
@@ -129,8 +137,21 @@ const DailyLogSchema = new Schema<IDailyLog>(
 // Compound index: one log per user per day
 DailyLogSchema.index({ telegramId: 1, date: 1 }, { unique: true });
 
+const WeightLogSchema = new Schema<IWeightLog>(
+  {
+    telegramId: { type: Number, required: true, index: true },
+    weight: { type: Number, required: true },
+    date: { type: String, required: true },
+  },
+  { timestamps: true }
+);
+
+// One weight log per user per day
+WeightLogSchema.index({ telegramId: 1, date: 1 }, { unique: true });
+
 // ─── Models ──────────────────────────────────────────
 
 export const User: Model<IUser> = mongoose.model<IUser>("User", UserSchema);
 export const Profile: Model<IProfile> = mongoose.model<IProfile>("Profile", ProfileSchema);
 export const DailyLog: Model<IDailyLog> = mongoose.model<IDailyLog>("DailyLog", DailyLogSchema);
+export const WeightLog: Model<IWeightLog> = mongoose.model<IWeightLog>("WeightLog", WeightLogSchema);
