@@ -195,7 +195,7 @@ _Your daily calorie budget has increased by ${calories} kcal!_
 export async function taxCommand(ctx: BotContext): Promise<void> {
   const food = ctx.message?.text?.replace("/tax", "").trim();
   if (!food) {
-    await ctx.reply("What food do you want to calculate the 'tax' for? e.g. `/tax 1 samosa`", { parse_mode: "Markdown" });
+    await ctx.conversation.enter("logTax");
     return;
   }
 
@@ -230,40 +230,7 @@ export async function craveCommand(ctx: BotContext): Promise<void> {
 // ─── /cheat command (PHASE 3) ───────────────────────────
 
 export async function cheatCommand(ctx: BotContext): Promise<void> {
-  const text = ctx.message?.text?.replace("/cheat", "").trim().toLowerCase();
-  const telegramId = ctx.from!.id;
-  
-  const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-
-  if (!text) {
-    const profile = await Profile.findOne({ telegramId });
-    if (!profile) return;
-
-    await ctx.reply(
-      `🎁 *Cheat Day Manager*\n\n` +
-      `📅 Scheduled: ${profile.cheatDay ? profile.cheatDay.charAt(0).toUpperCase() + profile.cheatDay.slice(1) : "Not set"}\n` +
-      `🏦 Banked: ${profile.bankedCalories} kcal\n\n` +
-      `To set a day: \`/cheat set saturday\`\n` +
-      `To toggle banking: \`/cheat banking on/off\``,
-      { parse_mode: "Markdown" }
-    );
-    return;
-  }
-
-  if (text.startsWith("set ")) {
-    const day = text.replace("set ", "").trim();
-    if (!days.includes(day)) {
-      await ctx.reply("Please specify a valid day (e.g., `/cheat set saturday`)", { parse_mode: "Markdown" });
-      return;
-    }
-
-    await Profile.findOneAndUpdate({ telegramId }, { cheatDay: day, calorieBankingActive: true });
-    await ctx.reply(`✅ Cheat day set to *${day.charAt(0).toUpperCase() + day.slice(1)}* and calorie banking activated!`, { parse_mode: "Markdown" });
-  } else if (text === "banking on" || text === "banking off") {
-    const active = text === "banking on";
-    await Profile.findOneAndUpdate({ telegramId }, { calorieBankingActive: active });
-    await ctx.reply(`🏦 Calorie banking is now *${active ? "ON" : "OFF"}*.`, { parse_mode: "Markdown" });
-  }
+  await ctx.conversation.enter("manageCheat");
 }
 
 // ─── /log command ───────────────────────────────────────
@@ -285,7 +252,7 @@ export async function dietCommand(ctx: BotContext): Promise<void> {
 export async function pantryCommand(ctx: BotContext): Promise<void> {
   const text = ctx.message?.text?.replace("/pantry", "").trim();
   if (!text) {
-    await ctx.reply("Tell me what ingredients you have, e.g. `/pantry eggs, spinach, bread`", { parse_mode: "Markdown" });
+    await ctx.conversation.enter("logPantry");
     return;
   }
 

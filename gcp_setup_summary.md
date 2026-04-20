@@ -62,5 +62,25 @@ Ensure these variables are set in your GitHub Repository Secrets (`Settings > Se
 | `GCE_INSTANCE_ZONE` | `us-central1-a` |
 | `PROJECT_ID` | `project-ed393033-4d39-4f83-820` |
 
+## 9. Access & Operations
+
+### GCP Configuration
+Before running commands, ensure you are authenticated and using the correct project:
+```bash
+# Set your active GCP account
+gcloud config set account bhanu.teja@gmail.com 
+
+# Set the active project for ScaleWise
+gcloud config set project project-ed393033-4d39-4f83-820
+```
+
+### Common Commands
+| Operation | Command |
+|---|---|
+| **SSH to VM** | `gcloud compute ssh bhanuteja@scalewise-bot-vm --zone=us-central1-a` |
+| **View Bot Logs** | `gcloud compute ssh bhanuteja@scalewise-bot-vm --command="sudo docker logs -f bot-container" --quiet` |
+| **Restart Bot** | `gcloud compute ssh bhanuteja@scalewise-bot-vm --command="sudo bash ~/startup.sh" --quiet` |
+| **Update Metadata** | `gcloud compute instances add-metadata scalewise-bot-vm --metadata KEY="VALUE"` |
+
 ---
-**Document Status**: Verified via `gcloud` CLI on 2026-04-20.
+**Document Status**: Verified and Updated on 2026-04-20.

@@ -11,6 +11,9 @@ import {
 } from "./commands";
 import { updateProfileConversation } from "./conversations/updateProfile";
 import { logActivityConversation } from "./conversations/activity";
+import { logTaxConversation } from "./conversations/tax";
+import { logPantryConversation } from "./conversations/pantry";
+import { manageCheatConversation } from "./conversations/cheat";
 import { handlePhoto } from "./handlers/photoHandler";
 import { initScheduler } from "./services/scheduler";
 import { User, Profile, DailyLog } from "./models";
@@ -30,6 +33,9 @@ bot.use(conversations());
 bot.use(createConversation(onboardingConversation, "onboarding"));
 bot.use(createConversation(updateProfileConversation, "updateProfile"));
 bot.use(createConversation(logActivityConversation, "logActivity"));
+bot.use(createConversation(logTaxConversation, "logTax"));
+bot.use(createConversation(logPantryConversation, "logPantry"));
+bot.use(createConversation(manageCheatConversation, "manageCheat"));
 
 // ─── Command Handlers ───────────────────────────────────
 
