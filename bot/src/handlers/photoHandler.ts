@@ -58,28 +58,29 @@ export async function handlePhoto(ctx: BotContext) {
 
     // Save to DailyLog
     const today = new Date().toISOString().split("T")[0];
-    const log = await DailyLog.findOneAndUpdate(
+    await DailyLog.findOneAndUpdate(
       { telegramId, date: today },
-      { $setOnInsert: { telegramId, date: today } },
+      {
+        $push: {
+          meals: {
+            name: "Auto-logged",
+            description: analysis.dishName,
+            calories: analysis.calories,
+            protein: analysis.protein,
+            carbs: analysis.carbs,
+            fat: analysis.fat,
+            loggedAt: new Date(),
+          },
+        },
+        $inc: {
+          totalCalories: analysis.calories,
+          totalProtein: analysis.protein,
+          totalCarbs: analysis.carbs,
+          totalFat: analysis.fat,
+        },
+      },
       { upsert: true, new: true }
     );
-
-    log.meals.push({
-      name: "Auto-logged",
-      description: analysis.dishName,
-      calories: analysis.calories,
-      protein: analysis.protein,
-      carbs: analysis.carbs,
-      fat: analysis.fat,
-      loggedAt: new Date(),
-    });
-
-    // Update totals
-    log.totalCalories += analysis.calories;
-    log.totalProtein += analysis.protein;
-    log.totalCarbs += analysis.carbs;
-    log.totalFat += analysis.fat;
-    await log.save();
 
     const responseText = `
 ✅ *${analysis.dishName}* Identified!

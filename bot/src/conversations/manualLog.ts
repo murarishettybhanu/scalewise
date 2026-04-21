@@ -32,16 +32,29 @@ export async function manualLogConversation(
   const today = new Date().toISOString().split("T")[0];
   
   await conversation.external(async () => {
-    await DailyLog.create({
-      telegramId,
-      date: today,
-      dishName: analysis.dishName,
-      calories: analysis.calories,
-      protein: analysis.protein,
-      carbs: analysis.carbs,
-      fat: analysis.fat,
-      isManual: true
-    });
+    await DailyLog.findOneAndUpdate(
+      { telegramId, date: today },
+      {
+        $push: {
+          meals: {
+            name: "Manual",
+            description: analysis.dishName,
+            calories: analysis.calories,
+            protein: analysis.protein,
+            carbs: analysis.carbs,
+            fat: analysis.fat,
+            loggedAt: new Date()
+          }
+        },
+        $inc: {
+          totalCalories: analysis.calories,
+          totalProtein: analysis.protein,
+          totalCarbs: analysis.carbs,
+          totalFat: analysis.fat
+        }
+      },
+      { upsert: true, new: true }
+    );
   });
 
   const response = `
