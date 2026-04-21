@@ -4,10 +4,10 @@ import { Gender, ActivityLevel, Goal } from "../models";
 
 const ACTIVITY_MULTIPLIERS: Record<ActivityLevel, number> = {
   sedentary: 1.2,
-  light: 1.375,
-  moderate: 1.55,
-  active: 1.725,
-  very_active: 1.9,
+  lightly_active: 1.375,
+  moderately_active: 1.55,
+  very_active: 1.725,
+  extra_active: 1.9,
 };
 
 // ─── BMR Calculation (Mifflin–St Jeor) ──────────────────

@@ -65,10 +65,7 @@ Standardizes energy expenditure using MET (Metabolic Equivalent of Task) formula
 
 Sub-Features & Technical Pointers:
 
-MET Formula Implementation: (MET x Weight_kg x Duration_hr) calculation for all activities.
-
-Gym & Equipment Logging: Recognizes specific equipment and strength movements.
-
+1.2 (Sedentary) | 1.375 (Light) | 1.55 (Moderate) | 1.725 (Very) | 1.9 (Extra)
 Energy-Out Balancing: Automatically scales calorie budgets post-activity.
 
 5. The Tax Negotiator & Behavioral Tools

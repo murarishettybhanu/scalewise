@@ -1,7 +1,8 @@
 import { type Conversation } from "@grammyjs/conversations";
 import { Context } from "grammy";
-import { User, Profile, Goal, Gender, ActivityLevel, DietType } from "../models";
+import { Goal, Gender, ActivityLevel, DietType, User, Profile } from "../models";
 import { calculateAllTargets } from "../services/calculator";
+import { calculateGoalCaloriesAI } from "../services/gemini";
 import type { BotContext } from "../types";
 
 // ─── Type for conversation inside the builder ───────────
@@ -126,25 +127,42 @@ export async function onboardingConversation(
     await weightCtx.reply("Please enter a valid weight in kg (30–300).");
   }
 
+  // ─── Step 5.5: Goal Weight ────────────────────────────
+
+  await ctx.reply(`🎯 *What is your goal weight?* (in kg)`, {
+    parse_mode: "Markdown",
+  });
+
+  let goalWeight: number;
+  while (true) {
+    const goalWeightCtx = await conversation.waitFor("message:text");
+    const parsed = parseFloat(goalWeightCtx.message.text.trim());
+    if (!isNaN(parsed) && parsed >= 30 && parsed <= 300) {
+      goalWeight = parsed;
+      break;
+    }
+    await goalWeightCtx.reply("Please enter a valid goal weight in kg (30–300).");
+  }
+
   // ─── Step 6: Activity Level ────────────────────────────
 
   await ctx.reply(
     "🏃 *How active are you?*\n\n" +
-      "1️⃣ *Sedentary* — Desk job, little exercise\n" +
-      "2️⃣ *Lightly Active* — Light exercise 1-3 days/week\n" +
-      "3️⃣ *Moderately Active* — Exercise 3-5 days/week\n" +
-      "4️⃣ *Very Active* — Hard exercise 6-7 days/week\n" +
-      "5️⃣ *Extremely Active* — Athlete or physical labor job\n\n" +
+      "1️⃣ *Sedentary* — Little to no exercise; desk job\n" +
+      "2️⃣ *Lightly Active* — Light exercise or sports 1–3 days per week\n" +
+      "3️⃣ *Moderately Active* — Moderate exercise or sports 3–5 days per week\n" +
+      "4️⃣ *Very Active* — Hard exercise or sports 6–7 days per week\n" +
+      "5️⃣ *Extra Active* — Very hard exercise, physical job, or training twice a day\n\n" +
       "Reply with a number (1–5)",
     { parse_mode: "Markdown" }
   );
 
   const activityMap: Record<string, ActivityLevel> = {
     "1": "sedentary",
-    "2": "light",
-    "3": "moderate",
-    "4": "active",
-    "5": "very_active",
+    "2": "lightly_active",
+    "3": "moderately_active",
+    "4": "very_active",
+    "5": "extra_active",
   };
 
   let activityLevel: ActivityLevel;
@@ -224,18 +242,62 @@ export async function onboardingConversation(
         age,
         height,
         weight,
+        goalWeight,
         gender,
         activityLevel,
         dietType,
         region,
         bmr: targets.bmr,
         tdee: targets.tdee,
-        targetCalories: targets.targetCalories,
+        targetCalories: targets.targetCalories, // This will be updated by AI confirmation if user accepts
         targetProtein: targets.targetProtein,
       },
       { upsert: true, new: true }
     );
   });
+
+  // ─── Step 10: AI Strategy Confirmation ──────────────────
+
+  await ctx.reply("🤖 *Gemini is calculating your optimal strategy...*", { parse_mode: "Markdown" });
+  
+  const aiRecommendation = await conversation.external(() => 
+    calculateGoalCaloriesAI(weight, goalWeight, age, height, gender, activityLevel, goal)
+  );
+
+  if (aiRecommendation) {
+    const strategyMsg = `
+💡 *AI Strategy Recommended*
+
+🎯 *New Target:* ${aiRecommendation.targetCalories} kcal/day
+🧠 *Reasoning:* ${aiRecommendation.reasoning}
+
+*Do you accept this AI-guided strategy?*
+    `;
+    
+    await ctx.reply(strategyMsg, {
+      parse_mode: "Markdown",
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "✅ Accept AI Strategy", callback_data: `accept_ai_target_${aiRecommendation.targetCalories}` }],
+          [{ text: "❌ Use Standard Plan", callback_data: "use_standard_plan" }]
+        ]
+      }
+    });
+
+    const confirmation = await conversation.waitForCallbackQuery([/^accept_ai_target_/, "use_standard_plan"]);
+    await confirmation.answerCallbackQuery();
+
+    if (confirmation.callbackQuery.data.startsWith("accept_ai_target_")) {
+      const confirmedKcal = parseInt(confirmation.callbackQuery.data.split("_")[3]);
+      await conversation.external(() => 
+        Profile.findOneAndUpdate({ telegramId }, { targetCalories: confirmedKcal })
+      );
+      targets.targetCalories = confirmedKcal;
+      await ctx.reply("🚀 *AI Strategy Activated!* Your daily target has been updated.");
+    } else {
+      await ctx.reply("✅ *Standard Plan used.* You can always update this via /profile.");
+    }
+  }
 
   // ─── Show results ──────────────────────────────────────
 

@@ -2,7 +2,7 @@ import { Context } from "grammy";
 import { User, Profile, DailyLog, WeightLog, ActivityLog } from "../models";
 import type { BotContext } from "../types";
 import { getRemainingPlan } from "../services/dietEngine";
-import { generateRecipeFromPantry, parseFoodText } from "../services/gemini";
+import { generateRecipeFromPantry, parseFoodText, calculateGoalCaloriesAI } from "../services/gemini";
 import { parseActivityText, calculateActivityBurn } from "../services/activityService";
 import { calculateStepTax, getUrgeSurfingGuide, checkSodiumSpike } from "../services/behavioralService";
 
@@ -135,14 +135,45 @@ export async function weightCommand(ctx: BotContext): Promise<void> {
     { upsert: true }
   );
 
-  await Profile.findOneAndUpdate({ telegramId }, { weight });
-
-  let response = `⚖️ *Weight Logged:* ${weight} kg\nYour profile has been updated!`;
+  const profile = await Profile.findOneAndUpdate({ telegramId }, { weight }, { new: true });
+  
+  let responseText = `⚖️ *Weight Logged:* ${weight} kg\nYour profile has been updated!`;
   if (spikeAlert) {
-    response += `\n\n${spikeAlert}`;
+    responseText += `\n\n⚠️ *Sodium Spike Detected!* ${spikeAlert}`;
   }
 
-  await ctx.reply(response, { parse_mode: "Markdown" });
+  await ctx.reply(responseText, { parse_mode: "Markdown" });
+
+  // ─── AI Strategy Re-check ──────────────────────────────
+  if (profile) {
+    const aiRec = await calculateGoalCaloriesAI(
+      weight,
+      profile.goalWeight,
+      profile.age,
+      profile.height,
+      profile.gender,
+      profile.activityLevel,
+      profile.goal
+    );
+
+    if (aiRec) {
+      await ctx.reply(
+        `🤖 *AI Strategy Check*\n\n` +
+        `Based on your new weight, Gemini suggests a target of *${aiRec.targetCalories} kcal* to reach your goal of ${profile.goalWeight} kg.\n` +
+        `🧠 Reasoning: ${aiRec.reasoning}\n\n` +
+        `*Update your daily budget?*`,
+        {
+          parse_mode: "Markdown",
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: `✅ Accept ${aiRec.targetCalories} kcal`, callback_data: `accept_ai_target_${aiRec.targetCalories}` }],
+              [{ text: "❌ Keep Current", callback_data: "ignore_ai_target" }]
+            ]
+          }
+        }
+      );
+    }
+  }
 }
 
 // ─── /activity command (PHASE 3) ─────────────────────────

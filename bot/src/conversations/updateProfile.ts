@@ -2,6 +2,7 @@ import { type Conversation } from "@grammyjs/conversations";
 import { Context, InlineKeyboard } from "grammy";
 import { User, Profile, Goal, Gender, ActivityLevel, DietType } from "../models";
 import { calculateAllTargets } from "../services/calculator";
+import { calculateGoalCaloriesAI } from "../services/gemini";
 import type { BotContext } from "../types";
 
 export type BotConversation = Conversation<BotContext, Context>;
@@ -30,6 +31,8 @@ export async function updateProfileConversation(
     .text("🏃 Activity", "update_activity")
     .text("🍽️ Diet", "update_diet")
     .row()
+    .text("🎯 Goal Weight", "update_goal_weight")
+    .row()
     .text("❌ Cancel", "cancel_update");
 
   await ctx.reply("What would you like to update in your profile?", {
@@ -44,6 +47,7 @@ export async function updateProfileConversation(
     "update_goal",
     "update_activity",
     "update_diet",
+    "update_goal_weight",
     "cancel_update",
   ]);
 
@@ -113,11 +117,17 @@ export async function updateProfileConversation(
 
   else if (action === "update_activity") {
     await ctx.reply(
-      "🏃 *How active are you?*\n1️⃣ Sedentary\n2️⃣ Light\n3️⃣ Moderate\n4️⃣ Active\n5️⃣ Very Active\n\nReply with 1–5",
+      "🏃 *How active are you?*\n\n" +
+        "1️⃣ *Sedentary* — Little to no exercise; desk job\n" +
+        "2️⃣ *Lightly Active* — Light exercise or sports 1–3 days per week\n" +
+        "3️⃣ *Moderately Active* — Moderate exercise or sports 3–5 days per week\n" +
+        "4️⃣ *Very Active* — Hard exercise or sports 6–7 days per week\n" +
+        "5️⃣ *Extra Active* — Very hard exercise, physical job, or training twice a day\n\n" +
+        "Reply with 1–5",
       { parse_mode: "Markdown" }
     );
     const activityMap: Record<string, ActivityLevel> = {
-      "1": "sedentary", "2": "light", "3": "moderate", "4": "active", "5": "very_active"
+      "1": "sedentary", "2": "lightly_active", "3": "moderately_active", "4": "very_active", "5": "extra_active"
     };
     while (true) {
       const actCtx = await conversation.waitFor("message:text");
@@ -140,6 +150,19 @@ export async function updateProfileConversation(
       const input = dietCtx.message.text.trim();
       if (dietMap[input]) { updateData.dietType = dietMap[input]; break; }
       await dietCtx.reply("Please reply with a number from 1 to 4.");
+    }
+  }
+
+  else if (action === "update_goal_weight") {
+    await ctx.reply("🎯 *Enter your new goal weight* (in kg)", { parse_mode: "Markdown" });
+    while (true) {
+      const goalWCtx = await conversation.waitFor("message:text");
+      const parsed = parseFloat(goalWCtx.message.text.trim());
+      if (!isNaN(parsed) && parsed >= 30 && parsed <= 300) {
+        updateData.goalWeight = parsed;
+        break;
+      }
+      await goalWCtx.reply("Please enter a valid goal weight in kg (30–300).");
     }
   }
 
@@ -171,7 +194,7 @@ export async function updateProfileConversation(
     return;
   }
 
-  // 5. Save and Notify
+  // 5. Save BMR/TDEE Vitals
   await conversation.external(async () => {
     await Profile.findOneAndUpdate(
       { telegramId },
@@ -179,17 +202,52 @@ export async function updateProfileConversation(
         ...updateData,
         bmr: targets.bmr,
         tdee: targets.tdee,
-        targetCalories: targets.targetCalories,
+        targetCalories: targets.targetCalories, // Will be updated by AI if weight changed
         targetProtein: targets.targetProtein,
       },
       { new: true }
     );
   });
 
-  await ctx.reply(
-    `✅ *Profile Updated!*\n\n` +
-      `🎯 *New Daily Target:* ${targets.targetCalories} kcal | ${targets.targetProtein}g protein\n\n` +
-      `Check your full /profile to see the changes.`,
-    { parse_mode: "Markdown" }
-  );
+  await ctx.reply(`✅ *Vitals Updated!* (BMR: ${targets.bmr} | TDEE: ${targets.tdee})`, { parse_mode: "Markdown" });
+
+  // 6. AI Strategy Re-check (if weight changed)
+  const weightChanged = updateData.weight !== undefined || updateData.goalWeight !== undefined;
+  
+  if (weightChanged) {
+    await ctx.reply("🤖 *Gemini is recalculating your strategy based on your new weight...*", { parse_mode: "Markdown" });
+    
+    const finalWeight = updateData.weight ?? profile.weight;
+    const finalGoalWeight = updateData.goalWeight ?? profile.goalWeight;
+    
+    const aiRec = await conversation.external(() => 
+      calculateGoalCaloriesAI(
+        finalWeight,
+        finalGoalWeight,
+        newProfile.age,
+        newProfile.height,
+        newProfile.gender,
+        newProfile.activityLevel,
+        newProfile.goal
+      )
+    );
+
+    if (aiRec) {
+      await ctx.reply(
+        `💡 *Recommendation for ${finalGoalWeight}kg Goal*\n\n` +
+        `🎯 *Target:* ${aiRec.targetCalories} kcal\n` +
+        `🧠 *Reasoning:* ${aiRec.reasoning}\n\n` +
+        `*Update your daily budget?*`,
+        {
+          parse_mode: "Markdown",
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: `✅ Accept ${aiRec.targetCalories} kcal`, callback_data: `accept_ai_target_${aiRec.targetCalories}` }],
+              [{ text: "❌ Stick to Current", callback_data: "ignore_ai_target" }]
+            ]
+          }
+        }
+      );
+    }
+  }
 }

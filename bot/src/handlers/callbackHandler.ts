@@ -49,4 +49,17 @@ export async function handleCallbackQuery(ctx: BotContext): Promise<void> {
     await ctx.answerCallbackQuery();
     await ctx.editMessageText("Safe! Your profile and data are secure. ✅");
   }
+
+  else if (data?.startsWith("accept_ai_target_")) {
+    const kcal = parseInt(data.split("_")[3]);
+    const telegramId = ctx.from!.id;
+    await Profile.findOneAndUpdate({ telegramId }, { targetCalories: kcal });
+    await ctx.answerCallbackQuery({ text: `Target updated to ${kcal} kcal!` });
+    await ctx.editMessageText(`✅ *Strategy Activated:* Your daily target is now *${kcal} kcal*.`, { parse_mode: "Markdown" });
+  }
+
+  else if (data === "ignore_ai_target" || data === "use_standard_plan") {
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText("👌 Plan kept as is. You can change this anytime in /profile.");
+  }
 }

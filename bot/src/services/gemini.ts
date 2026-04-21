@@ -155,3 +155,58 @@ export async function parseFoodText(text: string): Promise<FoodAnalysis | null> 
     return null;
   }
 }
+export interface GoalRecommendation {
+  targetCalories: number;
+  reasoning: string;
+}
+
+/**
+ * Calculates strategic calorie targets using AI based on goal weight.
+ */
+export async function calculateGoalCaloriesAI(
+  currentWeight: number,
+  goalWeight: number,
+  age: number,
+  height: number,
+  gender: string,
+  activityLevel: string,
+  goal: string
+): Promise<GoalRecommendation | null> {
+  const prompt = `
+    Act as a professional sports nutritionist and metabolic specialist. 
+    Analyze the following user metrics and recommend the optimal DAILY calorie target to reach their Goal Weight safely and effectively.
+    
+    USER METRICS:
+    - Current Weight: ${currentWeight} kg
+    - Goal Weight: ${goalWeight} kg
+    - Age: ${age}
+    - Height: ${height} cm
+    - Gender: ${gender}
+    - Activity Level: ${activityLevel}
+    - Overall Strategy: ${goal} (deficit for weight loss, surplus for weight gain)
+    
+    Output requirements:
+    1. Calculate a specific daily calorie target (kcal).
+    2. Provide a 1-2 sentence reasoning explaining why this target is appropriate (considering metabolic rate, activity, and gap to goal).
+    
+    Return the result ONLY as a JSON object:
+    {
+      "targetCalories": number,
+      "reasoning": string
+    }
+  `;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+
+    return JSON.parse(jsonMatch[0]) as GoalRecommendation;
+  } catch (error) {
+    console.error("Gemini Goal Calculation Error:", error);
+    return null;
+  }
+}

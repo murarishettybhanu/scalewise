@@ -7,10 +7,10 @@ export type DietType = "vegetarian" | "vegan" | "jain" | "non-veg";
 export type Gender = "male" | "female";
 export type ActivityLevel =
   | "sedentary"       // little or no exercise
-  | "light"           // 1-3 days/week
-  | "moderate"        // 3-5 days/week
-  | "active"          // 6-7 days/week
-  | "very_active";    // athlete / physical job
+  | "lightly_active"  // 1-3 days/week
+  | "moderately_active" // 3-5 days/week
+  | "very_active"     // 6-7 days/week
+  | "extra_active";    // athlete / physical job
 
 export interface IUser extends Document {
   telegramId: number;
@@ -28,6 +28,7 @@ export interface IProfile extends Document {
   age: number;
   height: number;       // cm
   weight: number;       // kg
+  goalWeight: number;   // kg
   gender: Gender;
   activityLevel: ActivityLevel;
   dietType: DietType;
@@ -103,10 +104,11 @@ const ProfileSchema = new Schema<IProfile>(
     age: { type: Number, required: true },
     height: { type: Number, required: true },
     weight: { type: Number, required: true },
+    goalWeight: { type: Number, required: true },
     gender: { type: String, enum: ["male", "female"], required: true },
     activityLevel: {
       type: String,
-      enum: ["sedentary", "light", "moderate", "active", "very_active"],
+      enum: ["sedentary", "lightly_active", "moderately_active", "very_active", "extra_active"],
       required: true,
     },
     dietType: {
