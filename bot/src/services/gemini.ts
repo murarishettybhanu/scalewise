@@ -102,7 +102,8 @@ export async function generateRecipeFromPantry(items: string, targetKcal: number
     I have the following items in my pantry: ${items}.
     Suggest a healthy, easy-to-cook recipe that is approximately ${targetKcal} calories.
     Focus on high protein and use minimal oil.
-    Use HTML tags for formatting (e.g., <b>Dish Name</b>). DO NOT use any markdown (* or _).
+    Use ONLY <b> for bolding. DO NOT use markdown or tags like <p>, <ul>, <li>, or <ol>.
+    Use plain newlines for spacing and "•" for bullet points.
   `;
 
   try {
@@ -132,12 +133,13 @@ export async function generateRandomRecipeAI(
     - Target: High Protein, low oil
     
     Output requirements:
-    1. Use HTML tags for formatting (e.g., <b>Dish Name</b>, <ul><li>Ingredient</li></ul>).
-    2. Dish Name (with a catchy emoji)
-    3. Ingredients list
-    4. Quick step-by-step instructions
-    5. Macro breakdown (Calories, Protein)
-    6. DO NOT use any markdown characters like * or _.
+    1. Use ONLY <b> for bold and <i> for italic. DO NOT use <p>, <ul>, <li>, or <ol> tags.
+    2. Use plain newlines for spacing and "•" for bullet points.
+    3. Dish Name (with a catchy emoji)
+    4. Ingredients list
+    5. Quick step-by-step instructions
+    6. Macro breakdown (Calories, Protein)
+    7. DO NOT use any markdown characters like * or _.
   `;
 
   try {
@@ -239,7 +241,7 @@ export async function calculateGoalCaloriesAI(
     2. Calculate a specific daily protein target (grams).
     3. Estimate total duration in DAYS to reach the Goal Weight.
     4. Provide a 1-2 sentence reasoning explaining the strategy.
-    5. DO NOT use any markdown characters (* or _) in the reasoning.
+    5. Use ONLY <b> for bolding. DO NOT use markdown (* or _) or tags like <p>, <ul>, <li>, or <ol>.
     
     Return the result ONLY as a JSON object:
     {

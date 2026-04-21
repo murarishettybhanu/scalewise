@@ -227,15 +227,23 @@ export async function onboardingConversation(
 
   // ─── Step 10: AI Strategy Confirmation ──────────────────
 
+  let lastStrategyMsgId: number | undefined;
+
   while (true) {
-    await ctx.reply("🤖 *Gemini is calculating your optimal strategy...*", { parse_mode: "Markdown" });
+    if (lastStrategyMsgId) {
+      await ctx.api.editMessageReplyMarkup(ctx.chat!.id, lastStrategyMsgId, { reply_markup: { inline_keyboard: [] } }).catch(() => {});
+    }
+
+    const waitMsg = await ctx.reply("🤖 <b>Gemini is calculating your optimal strategy...</b>", { parse_mode: "HTML" });
     
     const aiRecommendation = await conversation.external(() => 
       calculateGoalCaloriesAI(weight, goalWeight, age, height, gender, activityLevel, goal)
     );
 
+    await ctx.api.deleteMessage(ctx.chat!.id, waitMsg.message_id).catch(() => {});
+
     if (!aiRecommendation) {
-      await ctx.reply("❌ Sorry, I couldn't generate a strategy right now. Using standard calculations.");
+      await ctx.reply("❌ <b>Sorry, I couldn't generate a strategy right now.</b> Using standard calculations.", { parse_mode: "HTML" });
       break; 
     }
 
@@ -250,7 +258,7 @@ export async function onboardingConversation(
 <i>Do you accept this AI-guided strategy?</i>
     `;
     
-    await ctx.reply(strategyMsg, {
+    const msg = await ctx.reply(strategyMsg, {
       parse_mode: "HTML",
       reply_markup: {
         inline_keyboard: [
@@ -262,6 +270,7 @@ export async function onboardingConversation(
         ]
       }
     });
+    lastStrategyMsgId = msg.message_id;
 
     const confirmation = await conversation.waitForCallbackQuery([/^accept_ai_strategy_/, "regenerate_strategy"]);
     await confirmation.answerCallbackQuery();
@@ -285,11 +294,15 @@ export async function onboardingConversation(
       );
       targets.targetCalories = confirmedKcal;
       targets.targetProtein = confirmedProtein;
-      await ctx.reply("🚀 *AI Strategy Activated!* Your daily targets and countdown have been set.");
+
+      // Remove buttons from the accepted message
+      await ctx.api.editMessageReplyMarkup(ctx.chat!.id, lastStrategyMsgId, { reply_markup: { inline_keyboard: [] } }).catch(() => {});
+      
+      await ctx.reply("🚀 <b>AI Strategy Activated!</b> Your daily targets and countdown have been set.", { parse_mode: "HTML" });
       break; // Exit loop
     } else {
-      await ctx.reply("🔄 *Recalculating fresh strategy...*");
-      // Loop continues
+      await ctx.reply("🔄 <b>Recalculating fresh strategy...</b>", { parse_mode: "HTML" });
+      // Loop continues, buttons will be cleared at start of next iteration
     }
   }
 

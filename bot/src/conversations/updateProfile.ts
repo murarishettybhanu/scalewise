@@ -240,8 +240,12 @@ export async function updateProfileConversation(
   const weightChanged = updateData.weight !== undefined || updateData.goalWeight !== undefined;
   
   if (weightChanged) {
+    let lastStrategyMsgId: number | undefined;
     while (true) {
-      await ctx.reply("🤖 *Gemini is recalculating your strategy based on your new weight...*", { parse_mode: "Markdown" });
+      if (lastStrategyMsgId) {
+        await ctx.api.editMessageReplyMarkup(ctx.chat!.id, lastStrategyMsgId, { reply_markup: { inline_keyboard: [] } }).catch(() => {});
+      }
+      const waitMsg = await ctx.reply("🤖 <b>Gemini is recalculating your strategy based on your new weight...</b>", { parse_mode: "HTML" });
       
       const finalWeight = updateData.weight ?? profile.weight;
       const finalGoalWeight = updateData.goalWeight ?? profile.goalWeight;
@@ -258,12 +262,14 @@ export async function updateProfileConversation(
         )
       );
 
+      await ctx.api.deleteMessage(ctx.chat!.id, waitMsg.message_id).catch(() => {});
+
       if (!aiRec) {
-        await ctx.reply("❌ AI strategy could not be generated. Keeping current targets.");
+        await ctx.reply("❌ <b>AI strategy could not be generated.</b> Keeping current targets.", { parse_mode: "HTML" });
         break;
       }
 
-      await ctx.reply(
+      const msg = await ctx.reply(
         `💡 <b>Recommendation for ${finalGoalWeight}kg Goal</b>\n\n` +
         `🎯 <b>Target:</b> ${aiRec.targetCalories} kcal\n` +
         `🥩 <b>Protein:</b> ${aiRec.targetProtein}g\n` +
@@ -284,6 +290,7 @@ export async function updateProfileConversation(
           }
         }
       );
+      lastStrategyMsgId = msg.message_id;
 
       const decision = await conversation.waitForCallbackQuery([/^accept_ai_strategy_/, "regenerate_strategy", "ignore_ai_target"]);
       await decision.answerCallbackQuery();
@@ -301,13 +308,19 @@ export async function updateProfileConversation(
             }
           )
         );
-        await ctx.reply("🚀 *AI Strategy Activated!* Your profile has been updated.");
+
+        // Remove buttons from the accepted message
+        await ctx.api.editMessageReplyMarkup(ctx.chat!.id, lastStrategyMsgId, { reply_markup: { inline_keyboard: [] } }).catch(() => {});
+        
+        await ctx.reply("🚀 <b>AI Strategy Activated!</b> Your profile has been updated.", { parse_mode: "HTML" });
         break;
       } else if (decision.callbackQuery.data === "regenerate_strategy") {
-        await ctx.reply("🔄 *Recalculating fresh strategy...*");
+        await ctx.reply("🔄 <b>Recalculating fresh strategy...</b>", { parse_mode: "HTML" });
         // Continue loop
       } else {
-        await ctx.reply("👌 *Keeping your current targets.*");
+        // Remove buttons from the ignored message
+        await ctx.api.editMessageReplyMarkup(ctx.chat!.id, lastStrategyMsgId, { reply_markup: { inline_keyboard: [] } }).catch(() => {});
+        await ctx.reply("👌 <b>Keeping your current targets.</b>", { parse_mode: "HTML" });
         break;
       }
     }
