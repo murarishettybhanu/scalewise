@@ -40,6 +40,8 @@ export interface IProfile extends Document {
   cheatDay?: string;     // e.g. "saturday"
   calorieBankingActive: boolean;
   bankedCalories: number;
+  goalStartDate: Date;
+  estimatedGoalDays: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -124,6 +126,8 @@ const ProfileSchema = new Schema<IProfile>(
     cheatDay: { type: String, enum: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] },
     calorieBankingActive: { type: Boolean, default: false },
     bankedCalories: { type: Number, default: 0 },
+    goalStartDate: { type: Date, default: Date.now },
+    estimatedGoalDays: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

@@ -2,7 +2,7 @@ import { Context } from "grammy";
 import { User, Profile, DailyLog, WeightLog, ActivityLog } from "../models";
 import type { BotContext } from "../types";
 import { getRemainingPlan } from "../services/dietEngine";
-import { generateRecipeFromPantry, parseFoodText, calculateGoalCaloriesAI } from "../services/gemini";
+import { generateRecipeFromPantry, parseFoodText, calculateGoalCaloriesAI, generateRandomRecipeAI } from "../services/gemini";
 import { parseActivityText, calculateActivityBurn } from "../services/activityService";
 import { calculateStepTax, getUrgeSurfingGuide, checkSodiumSpike } from "../services/behavioralService";
 
@@ -138,6 +138,18 @@ export async function weightCommand(ctx: BotContext): Promise<void> {
   const profile = await Profile.findOneAndUpdate({ telegramId }, { weight }, { new: true });
   
   let responseText = `⚖️ *Weight Logged:* ${weight} kg\nYour profile has been updated!`;
+  
+  if (profile?.goalStartDate && profile?.estimatedGoalDays) {
+    const goalStart = new Date(profile.goalStartDate);
+    const todayDate = new Date();
+    const diffTime = todayDate.getTime() - goalStart.getTime();
+    const daysPassed = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    let daysRemaining = profile.estimatedGoalDays - daysPassed;
+    if (daysRemaining < 0) daysRemaining = 0;
+    
+    responseText += `\n\n⏳ *Days Remaining:* ${daysRemaining} days`;
+  }
+
   if (spikeAlert) {
     responseText += `\n\n⚠️ *Sodium Spike Detected!* ${spikeAlert}`;
   }
@@ -159,15 +171,21 @@ export async function weightCommand(ctx: BotContext): Promise<void> {
     if (aiRec) {
       await ctx.reply(
         `🤖 *AI Strategy Check*\n\n` +
-        `Based on your new weight, Gemini suggests a target of *${aiRec.targetCalories} kcal* to reach your goal of ${profile.goalWeight} kg.\n` +
-        `🧠 Reasoning: ${aiRec.reasoning}\n\n` +
-        `*Update your daily budget?*`,
+        `Based on your new weight, Gemini suggests:\n\n` +
+        `🎯 *Target:* ${aiRec.targetCalories} kcal\n` +
+        `🥩 *Protein:* ${aiRec.targetProtein}g\n` +
+        `⏳ *Estimated Time:* ${aiRec.estimatedDays} days\n` +
+        `🧠 *Reasoning:* ${aiRec.reasoning}\n\n` +
+        `*Update your daily budget & strategy?*`,
         {
           parse_mode: "Markdown",
           reply_markup: {
             inline_keyboard: [
-              [{ text: `✅ Accept ${aiRec.targetCalories} kcal`, callback_data: `accept_ai_target_${aiRec.targetCalories}` }],
-              [{ text: "❌ Keep Current", callback_data: "ignore_ai_target" }]
+              [{ 
+                text: `✅ Accept Strategy`, 
+                callback_data: `accept_ai_strategy_${aiRec.targetCalories}_${aiRec.targetProtein}_${aiRec.estimatedDays}` 
+              }],
+              [{ text: "❌ Stick to Current", callback_data: "ignore_ai_target" }]
             ]
           }
         }
@@ -359,6 +377,25 @@ export async function pantryCommand(ctx: BotContext): Promise<void> {
   await ctx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, recipe, { parse_mode: "Markdown" });
 }
 
+// ─── /recipe command ────────────────────────────────────
+
+export async function recipeCommand(ctx: BotContext): Promise<void> {
+  const telegramId = ctx.from!.id;
+  const profile = await Profile.findOne({ telegramId });
+  
+  const waitMsg = await ctx.reply("👩‍🍳 *Dreaming up a healthy recipe for you...*", { parse_mode: "Markdown" });
+  
+  const targetKcal = profile ? Math.round(profile.targetCalories / 3) : 600;
+  
+  const recipe = await generateRandomRecipeAI(
+    profile?.dietType || "non-veg",
+    profile?.region,
+    targetKcal
+  );
+  
+  await ctx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, recipe, { parse_mode: "Markdown" });
+}
+
 // ─── /help command ───────────────────────────────────────
 
 export async function helpCommand(ctx: BotContext): Promise<void> {
@@ -368,7 +405,8 @@ export async function helpCommand(ctx: BotContext): Promise<void> {
       `• /log — Start a guided meal log (Photo or Text)\n` +
       `• /diet — See today's remaining budget\n` +
       `• /weight <kg> — Log weight & check for spikes\n` +
-      `• /pantry — Get AI recipe ideas from ingredients\n\n` +
+      `• /pantry — Get AI recipe ideas from ingredients\n` +
+      `• /recipe — Get a random healthy recipe idea\n\n` +
       `🏃 *Activity & Movement*\n` +
       `• /activity — Guided movement logger\n` +
       `• /tax — Calculate walking "tax" for any treat\n\n` +

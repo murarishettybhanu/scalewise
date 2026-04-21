@@ -50,12 +50,32 @@ export async function handleCallbackQuery(ctx: BotContext): Promise<void> {
     await ctx.editMessageText("Safe! Your profile and data are secure. ✅");
   }
 
-  else if (data?.startsWith("accept_ai_target_")) {
-    const kcal = parseInt(data.split("_")[3]);
+  else if (data?.startsWith("accept_ai_strategy_")) {
+    const parts = data.split("_");
+    const kcal = parseInt(parts[3]);
+    const protein = parseInt(parts[4]);
+    const days = parseInt(parts[5]);
     const telegramId = ctx.from!.id;
-    await Profile.findOneAndUpdate({ telegramId }, { targetCalories: kcal });
-    await ctx.answerCallbackQuery({ text: `Target updated to ${kcal} kcal!` });
-    await ctx.editMessageText(`✅ *Strategy Activated:* Your daily target is now *${kcal} kcal*.`, { parse_mode: "Markdown" });
+
+    await Profile.findOneAndUpdate(
+      { telegramId }, 
+      { 
+        targetCalories: kcal,
+        targetProtein: protein,
+        estimatedGoalDays: days,
+        goalStartDate: new Date()
+      }
+    );
+
+    await ctx.answerCallbackQuery({ text: `Strategy Activated!` });
+    await ctx.editMessageText(
+      `✅ *Strategy Activated!*\n\n` +
+      `🎯 *Target:* ${kcal} kcal\n` +
+      `🥩 *Protein:* ${protein}g\n` +
+      `⏳ *Duration:* ${days} days\n\n` +
+      `_Your countdown starts now!_`, 
+      { parse_mode: "Markdown" }
+    );
   }
 
   else if (data === "ignore_ai_target" || data === "use_standard_plan") {

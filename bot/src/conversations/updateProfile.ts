@@ -32,6 +32,7 @@ export async function updateProfileConversation(
     .text("🍽️ Diet", "update_diet")
     .row()
     .text("🎯 Goal Weight", "update_goal_weight")
+    .text("⚧ Gender", "update_gender")
     .row()
     .text("❌ Cancel", "cancel_update");
 
@@ -48,6 +49,7 @@ export async function updateProfileConversation(
     "update_activity",
     "update_diet",
     "update_goal_weight",
+    "update_gender",
     "cancel_update",
   ]);
 
@@ -102,55 +104,78 @@ export async function updateProfileConversation(
   }
 
   else if (action === "update_goal") {
-    await ctx.reply(
-      "🎯 *What's your new goal?*\n1️⃣ Fat Loss\n2️⃣ Weight Gain\n\nReply with `1` or `2`",
-      { parse_mode: "Markdown" }
-    );
-    while (true) {
-      const goalCtx = await conversation.waitFor("message:text");
-      const input = goalCtx.message.text.trim();
-      if (input === "1") { updateData.goal = "deficit"; break; }
-      else if (input === "2") { updateData.goal = "surplus"; break; }
-      await goalCtx.reply("Please reply with `1` or `2`.");
-    }
+    const goalMenu = new InlineKeyboard()
+      .text("🔥 Fat Loss", "goal_deficit")
+      .text("💪 Weight Gain", "goal_surplus");
+
+    await ctx.reply("🎯 *What's your new goal?*", {
+      parse_mode: "Markdown",
+      reply_markup: goalMenu,
+    });
+
+    const goalQuery = await conversation.waitForCallbackQuery(["goal_deficit", "goal_surplus"]);
+    await goalQuery.answerCallbackQuery();
+    updateData.goal = goalQuery.callbackQuery.data === "goal_deficit" ? "deficit" : "surplus";
   }
 
   else if (action === "update_activity") {
+    const actMenu = new InlineKeyboard()
+      .text("Sedentary", "act_sedentary").row()
+      .text("Lightly Active", "act_lightly_active").row()
+      .text("Moderately Active", "act_moderately_active").row()
+      .text("Very Active", "act_very_active").row()
+      .text("Extra Active", "act_extra_active");
+
     await ctx.reply(
       "🏃 *How active are you?*\n\n" +
-        "1️⃣ *Sedentary* — Little to no exercise; desk job\n" +
-        "2️⃣ *Lightly Active* — Light exercise or sports 1–3 days per week\n" +
-        "3️⃣ *Moderately Active* — Moderate exercise or sports 3–5 days per week\n" +
-        "4️⃣ *Very Active* — Hard exercise or sports 6–7 days per week\n" +
-        "5️⃣ *Extra Active* — Very hard exercise, physical job, or training twice a day\n\n" +
-        "Reply with 1–5",
-      { parse_mode: "Markdown" }
+        "• *Sedentary* — Little exercise\n" +
+        "• *Lightly Active* — 1–3 days/week\n" +
+        "• *Moderately Active* — 3–5 days/week\n" +
+        "• *Very Active* — 6–7 days/week\n" +
+        "• *Extra Active* — Professional training",
+      { parse_mode: "Markdown", reply_markup: actMenu }
     );
-    const activityMap: Record<string, ActivityLevel> = {
-      "1": "sedentary", "2": "lightly_active", "3": "moderately_active", "4": "very_active", "5": "extra_active"
-    };
-    while (true) {
-      const actCtx = await conversation.waitFor("message:text");
-      const input = actCtx.message.text.trim();
-      if (activityMap[input]) { updateData.activityLevel = activityMap[input]; break; }
-      await actCtx.reply("Please reply with a number from 1 to 5.");
-    }
+
+    const actQuery = await conversation.waitForCallbackQuery([
+      "act_sedentary", "act_lightly_active", "act_moderately_active", "act_very_active", "act_extra_active"
+    ]);
+    await actQuery.answerCallbackQuery();
+    updateData.activityLevel = actQuery.callbackQuery.data.replace("act_", "") as ActivityLevel;
   }
 
   else if (action === "update_diet") {
-    await ctx.reply(
-      "🍽️ *Choose your new diet type:*\n1️⃣ Veg\n2️⃣ Vegan\n3️⃣ Jain\n4️⃣ Non-Veg\n\nReply with 1–4",
-      { parse_mode: "Markdown" }
-    );
-    const dietMap: Record<string, DietType> = {
-      "1": "vegetarian", "2": "vegan", "3": "jain", "4": "non-veg"
-    };
-    while (true) {
-      const dietCtx = await conversation.waitFor("message:text");
-      const input = dietCtx.message.text.trim();
-      if (dietMap[input]) { updateData.dietType = dietMap[input]; break; }
-      await dietCtx.reply("Please reply with a number from 1 to 4.");
-    }
+    const dietMenu = new InlineKeyboard()
+      .text("Vegetarian", "diet_vegetarian")
+      .text("Vegan", "diet_vegan")
+      .row()
+      .text("Jain", "diet_jain")
+      .text("Non-Veg", "diet_non-veg");
+
+    await ctx.reply("🍽️ *Choose your new diet type:*", {
+      parse_mode: "Markdown",
+      reply_markup: dietMenu,
+    });
+
+    const dietQuery = await conversation.waitForCallbackQuery([
+      "diet_vegetarian", "diet_vegan", "diet_jain", "diet_non-veg"
+    ]);
+    await dietQuery.answerCallbackQuery();
+    updateData.dietType = dietQuery.callbackQuery.data.replace("diet_", "") as DietType;
+  }
+
+  else if (action === "update_gender") {
+    const genderMenu = new InlineKeyboard()
+      .text("👨 Male", "gender_male")
+      .text("👩 Female", "gender_female");
+
+    await ctx.reply("⚧ *Choose your biological gender:*", {
+      parse_mode: "Markdown",
+      reply_markup: genderMenu,
+    });
+
+    const genderQuery = await conversation.waitForCallbackQuery(["gender_male", "gender_female"]);
+    await genderQuery.answerCallbackQuery();
+    updateData.gender = genderQuery.callbackQuery.data === "gender_male" ? "male" : "female";
   }
 
   else if (action === "update_goal_weight") {
@@ -236,13 +261,18 @@ export async function updateProfileConversation(
       await ctx.reply(
         `💡 *Recommendation for ${finalGoalWeight}kg Goal*\n\n` +
         `🎯 *Target:* ${aiRec.targetCalories} kcal\n` +
+        `🥩 *Protein:* ${aiRec.targetProtein}g\n` +
+        `⏳ *Estimated Time:* ${aiRec.estimatedDays} days\n` +
         `🧠 *Reasoning:* ${aiRec.reasoning}\n\n` +
-        `*Update your daily budget?*`,
+        `*Update your daily budget & strategy?*`,
         {
           parse_mode: "Markdown",
           reply_markup: {
             inline_keyboard: [
-              [{ text: `✅ Accept ${aiRec.targetCalories} kcal`, callback_data: `accept_ai_target_${aiRec.targetCalories}` }],
+              [{ 
+                text: `✅ Accept Strategy`, 
+                callback_data: `accept_ai_strategy_${aiRec.targetCalories}_${aiRec.targetProtein}_${aiRec.estimatedDays}` 
+              }],
               [{ text: "❌ Stick to Current", callback_data: "ignore_ai_target" }]
             ]
           }

@@ -6,7 +6,7 @@ import { onboardingConversation } from "./conversations/onboarding";
 import { 
   startCommand, profileCommand, helpCommand, 
   updateCommand, deleteCommand, weightCommand, 
-  logCommand, dietCommand, pantryCommand,
+  logCommand, dietCommand, pantryCommand, recipeCommand,
   activityCommand, taxCommand, craveCommand, cheatCommand
 } from "./commands";
 import { updateProfileConversation } from "./conversations/updateProfile";
@@ -54,6 +54,7 @@ bot.command("cheat", cheatCommand);
 bot.command("log", logCommand);
 bot.command("diet", dietCommand);
 bot.command("pantry", pantryCommand);
+bot.command("recipe", recipeCommand);
 bot.command("help", helpCommand);
 
 // ─── Media Handlers ─────────────────────────────────────
