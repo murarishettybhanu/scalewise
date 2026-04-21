@@ -227,38 +227,43 @@ export async function onboardingConversation(
 
   // ─── Step 10: AI Strategy Confirmation ──────────────────
 
-  await ctx.reply("🤖 *Gemini is calculating your optimal strategy...*", { parse_mode: "Markdown" });
-  
-  const aiRecommendation = await conversation.external(() => 
-    calculateGoalCaloriesAI(weight, goalWeight, age, height, gender, activityLevel, goal)
-  );
+  while (true) {
+    await ctx.reply("🤖 *Gemini is calculating your optimal strategy...*", { parse_mode: "Markdown" });
+    
+    const aiRecommendation = await conversation.external(() => 
+      calculateGoalCaloriesAI(weight, goalWeight, age, height, gender, activityLevel, goal)
+    );
 
-  if (aiRecommendation) {
+    if (!aiRecommendation) {
+      await ctx.reply("❌ Sorry, I couldn't generate a strategy right now. Using standard calculations.");
+      break; 
+    }
+
     const strategyMsg = `
-💡 *AI Strategy Recommended*
+💡 <b>AI Strategy Recommended</b>
 
-🎯 *Target:* ${aiRecommendation.targetCalories} kcal/day
-🥩 *Protein:* ${aiRecommendation.targetProtein}g/day
-⏳ *Estimated Time:* ${aiRecommendation.estimatedDays} days
-🧠 *Reasoning:* ${aiRecommendation.reasoning}
+🎯 <b>Target:</b> ${aiRecommendation.targetCalories} kcal/day
+🥩 <b>Protein:</b> ${aiRecommendation.targetProtein}g/day
+⏳ <b>Estimated Time:</b> ${aiRecommendation.estimatedDays} days
+🧠 <b>Reasoning:</b> ${aiRecommendation.reasoning}
 
-*Do you accept this AI-guided strategy?*
+<i>Do you accept this AI-guided strategy?</i>
     `;
     
     await ctx.reply(strategyMsg, {
-      parse_mode: "Markdown",
+      parse_mode: "HTML",
       reply_markup: {
         inline_keyboard: [
           [{ 
-            text: "✅ Accept AI Strategy", 
+            text: "✅ Accept & Start Journey", 
             callback_data: `accept_ai_strategy_${aiRecommendation.targetCalories}_${aiRecommendation.targetProtein}_${aiRecommendation.estimatedDays}` 
           }],
-          [{ text: "❌ Use Standard Plan", callback_data: "use_standard_plan" }]
+          [{ text: "🔄 Generate Another Plan", callback_data: "regenerate_strategy" }]
         ]
       }
     });
 
-    const confirmation = await conversation.waitForCallbackQuery([/^accept_ai_strategy_/, "use_standard_plan"]);
+    const confirmation = await conversation.waitForCallbackQuery([/^accept_ai_strategy_/, "regenerate_strategy"]);
     await confirmation.answerCallbackQuery();
 
     if (confirmation.callbackQuery.data.startsWith("accept_ai_strategy_")) {
@@ -281,8 +286,10 @@ export async function onboardingConversation(
       targets.targetCalories = confirmedKcal;
       targets.targetProtein = confirmedProtein;
       await ctx.reply("🚀 *AI Strategy Activated!* Your daily targets and countdown have been set.");
+      break; // Exit loop
     } else {
-      await ctx.reply("✅ *Standard Plan used.* You can always update this via /profile.");
+      await ctx.reply("🔄 *Recalculating fresh strategy...*");
+      // Loop continues
     }
   }
 

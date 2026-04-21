@@ -102,6 +102,7 @@ export async function generateRecipeFromPantry(items: string, targetKcal: number
     I have the following items in my pantry: ${items}.
     Suggest a healthy, easy-to-cook recipe that is approximately ${targetKcal} calories.
     Focus on high protein and use minimal oil.
+    Use HTML tags for formatting (e.g., <b>Dish Name</b>). DO NOT use any markdown (* or _).
   `;
 
   try {
@@ -131,10 +132,12 @@ export async function generateRandomRecipeAI(
     - Target: High Protein, low oil
     
     Output requirements:
-    1. Dish Name (with a catchy emoji)
-    2. Ingredients list
-    3. Quick step-by-step instructions
-    4. Macro breakdown (Calories, Protein)
+    1. Use HTML tags for formatting (e.g., <b>Dish Name</b>, <ul><li>Ingredient</li></ul>).
+    2. Dish Name (with a catchy emoji)
+    3. Ingredients list
+    4. Quick step-by-step instructions
+    5. Macro breakdown (Calories, Protein)
+    6. DO NOT use any markdown characters like * or _.
   `;
 
   try {
@@ -222,9 +225,10 @@ export async function calculateGoalCaloriesAI(
     
     GUIDELINES:
     1. PROTEIN: Provide a realistic daily protein target in grams. 
-       - For weight loss (deficit): Aim for 1.8g to 2.2g per kg of CURRENT weight to preserve muscle.
-       - For weight gain (surplus): Aim for 1.6g to 2.0g per kg of CURRENT weight to support muscle growth.
-       - DO NOT suggest unrealistic targets (e.g. >200g) unless the user's weight justifies it. Stay sustainable.
+       - Aim for 1.2g to 1.6g per kg of CURRENT weight. 
+       - This is for a general fitness enthusiast, NOT a professional bodybuilder. 
+       - The target should be manageable and practical (e.g. 80g-130g for most people).
+       - DO NOT suggest unrealistic targets (e.g. >160g) unless the user's weight justifies it. Stay sustainable.
     
     2. DURATION: Estimate the number of DAYS to reach the Goal Weight safely.
        - Safe weight loss: ~0.5kg to 1kg per week.
@@ -235,6 +239,7 @@ export async function calculateGoalCaloriesAI(
     2. Calculate a specific daily protein target (grams).
     3. Estimate total duration in DAYS to reach the Goal Weight.
     4. Provide a 1-2 sentence reasoning explaining the strategy.
+    5. DO NOT use any markdown characters (* or _) in the reasoning.
     
     Return the result ONLY as a JSON object:
     {

@@ -240,44 +240,76 @@ export async function updateProfileConversation(
   const weightChanged = updateData.weight !== undefined || updateData.goalWeight !== undefined;
   
   if (weightChanged) {
-    await ctx.reply("🤖 *Gemini is recalculating your strategy based on your new weight...*", { parse_mode: "Markdown" });
-    
-    const finalWeight = updateData.weight ?? profile.weight;
-    const finalGoalWeight = updateData.goalWeight ?? profile.goalWeight;
-    
-    const aiRec = await conversation.external(() => 
-      calculateGoalCaloriesAI(
-        finalWeight,
-        finalGoalWeight,
-        newProfile.age,
-        newProfile.height,
-        newProfile.gender,
-        newProfile.activityLevel,
-        newProfile.goal
-      )
-    );
+    while (true) {
+      await ctx.reply("🤖 *Gemini is recalculating your strategy based on your new weight...*", { parse_mode: "Markdown" });
+      
+      const finalWeight = updateData.weight ?? profile.weight;
+      const finalGoalWeight = updateData.goalWeight ?? profile.goalWeight;
+      
+      const aiRec = await conversation.external(() => 
+        calculateGoalCaloriesAI(
+          finalWeight,
+          finalGoalWeight,
+          newProfile.age,
+          newProfile.height,
+          newProfile.gender,
+          newProfile.activityLevel,
+          newProfile.goal
+        )
+      );
 
-    if (aiRec) {
+      if (!aiRec) {
+        await ctx.reply("❌ AI strategy could not be generated. Keeping current targets.");
+        break;
+      }
+
       await ctx.reply(
-        `💡 *Recommendation for ${finalGoalWeight}kg Goal*\n\n` +
-        `🎯 *Target:* ${aiRec.targetCalories} kcal\n` +
-        `🥩 *Protein:* ${aiRec.targetProtein}g\n` +
-        `⏳ *Estimated Time:* ${aiRec.estimatedDays} days\n` +
-        `🧠 *Reasoning:* ${aiRec.reasoning}\n\n` +
-        `*Update your daily budget & strategy?*`,
+        `💡 <b>Recommendation for ${finalGoalWeight}kg Goal</b>\n\n` +
+        `🎯 <b>Target:</b> ${aiRec.targetCalories} kcal\n` +
+        `🥩 <b>Protein:</b> ${aiRec.targetProtein}g\n` +
+        `⏳ <b>Estimated Time:</b> ${aiRec.estimatedDays} days\n` +
+        `🧠 <b>Reasoning:</b> ${aiRec.reasoning}\n\n` +
+        `<i>Update your daily budget & strategy?</i>`,
         {
-          parse_mode: "Markdown",
+          parse_mode: "HTML",
           reply_markup: {
             inline_keyboard: [
               [{ 
                 text: `✅ Accept Strategy`, 
                 callback_data: `accept_ai_strategy_${aiRec.targetCalories}_${aiRec.targetProtein}_${aiRec.estimatedDays}` 
               }],
+              [{ text: "🔄 Generate Another Plan", callback_data: "regenerate_strategy" }],
               [{ text: "❌ Stick to Current", callback_data: "ignore_ai_target" }]
             ]
           }
         }
       );
+
+      const decision = await conversation.waitForCallbackQuery([/^accept_ai_strategy_/, "regenerate_strategy", "ignore_ai_target"]);
+      await decision.answerCallbackQuery();
+
+      if (decision.callbackQuery.data.startsWith("accept_ai_strategy_")) {
+        const parts = decision.callbackQuery.data.split("_");
+        await conversation.external(() => 
+          Profile.findOneAndUpdate(
+            { telegramId }, 
+            { 
+              targetCalories: parseInt(parts[3]),
+              targetProtein: parseInt(parts[4]),
+              estimatedGoalDays: parseInt(parts[5]),
+              goalStartDate: new Date()
+            }
+          )
+        );
+        await ctx.reply("🚀 *AI Strategy Activated!* Your profile has been updated.");
+        break;
+      } else if (decision.callbackQuery.data === "regenerate_strategy") {
+        await ctx.reply("🔄 *Recalculating fresh strategy...*");
+        // Continue loop
+      } else {
+        await ctx.reply("👌 *Keeping your current targets.*");
+        break;
+      }
     }
   }
 }

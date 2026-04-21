@@ -26,5 +26,5 @@ export async function logPantryConversation(
   
   const recipe = await conversation.external(() => generateRecipeFromPantry(text, targetKcal));
   
-  await pantryCtx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, recipe, { parse_mode: "Markdown" });
+  await pantryCtx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, recipe, { parse_mode: "HTML" });
 }

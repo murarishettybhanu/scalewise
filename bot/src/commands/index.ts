@@ -170,21 +170,22 @@ export async function weightCommand(ctx: BotContext): Promise<void> {
 
     if (aiRec) {
       await ctx.reply(
-        `🤖 *AI Strategy Check*\n\n` +
+        `🤖 <b>AI Strategy Check</b>\n\n` +
         `Based on your new weight, Gemini suggests:\n\n` +
-        `🎯 *Target:* ${aiRec.targetCalories} kcal\n` +
-        `🥩 *Protein:* ${aiRec.targetProtein}g\n` +
-        `⏳ *Estimated Time:* ${aiRec.estimatedDays} days\n` +
-        `🧠 *Reasoning:* ${aiRec.reasoning}\n\n` +
-        `*Update your daily budget & strategy?*`,
+        `🎯 <b>Target:</b> ${aiRec.targetCalories} kcal\n` +
+        `🥩 <b>Protein:</b> ${aiRec.targetProtein}g\n` +
+        `⏳ <b>Estimated Time:</b> ${aiRec.estimatedDays} days\n` +
+        `🧠 <b>Reasoning:</b> ${aiRec.reasoning}\n\n` +
+        `<i>Update your daily budget & strategy?</i>`,
         {
-          parse_mode: "Markdown",
+          parse_mode: "HTML",
           reply_markup: {
             inline_keyboard: [
               [{ 
                 text: `✅ Accept Strategy`, 
                 callback_data: `accept_ai_strategy_${aiRec.targetCalories}_${aiRec.targetProtein}_${aiRec.estimatedDays}` 
               }],
+              [{ text: "🔄 Generate Another Plan", callback_data: "regenerate_strategy" }],
               [{ text: "❌ Stick to Current", callback_data: "ignore_ai_target" }]
             ]
           }
@@ -374,7 +375,7 @@ export async function pantryCommand(ctx: BotContext): Promise<void> {
   const targetKcal = profile ? Math.round(profile.targetCalories / 4) : 500;
   
   const recipe = await generateRecipeFromPantry(text, targetKcal);
-  await ctx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, recipe, { parse_mode: "Markdown" });
+  await ctx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, recipe, { parse_mode: "HTML" });
 }
 
 // ─── /recipe command ────────────────────────────────────
@@ -393,7 +394,7 @@ export async function recipeCommand(ctx: BotContext): Promise<void> {
     targetKcal
   );
   
-  await ctx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, recipe, { parse_mode: "Markdown" });
+  await ctx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, recipe, { parse_mode: "HTML" });
 }
 
 // ─── /help command ───────────────────────────────────────

@@ -69,13 +69,56 @@ export async function handleCallbackQuery(ctx: BotContext): Promise<void> {
 
     await ctx.answerCallbackQuery({ text: `Strategy Activated!` });
     await ctx.editMessageText(
-      `✅ *Strategy Activated!*\n\n` +
-      `🎯 *Target:* ${kcal} kcal\n` +
-      `🥩 *Protein:* ${protein}g\n` +
-      `⏳ *Duration:* ${days} days\n\n` +
-      `_Your countdown starts now!_`, 
-      { parse_mode: "Markdown" }
+      `✅ <b>Strategy Activated!</b>\n\n` +
+      `🎯 <b>Target:</b> ${kcal} kcal\n` +
+      `🥩 <b>Protein:</b> ${protein}g\n` +
+      `⏳ <b>Duration:</b> ${days} days\n\n` +
+      `<i>Your countdown starts now!</i>`, 
+      { parse_mode: "HTML" }
     );
+  }
+
+  else if (data === "regenerate_strategy") {
+    const telegramId = ctx.from!.id;
+    const profile = await Profile.findOne({ telegramId });
+    if (!profile) return;
+
+    await ctx.answerCallbackQuery({ text: "Recalculating..." });
+    await ctx.editMessageText("🤖 <b>Gemini is cooking up a fresh strategy...</b>", { parse_mode: "HTML" });
+
+    const aiRec = await calculateGoalCaloriesAI(
+      profile.weight,
+      profile.goalWeight,
+      profile.age,
+      profile.height,
+      profile.gender,
+      profile.activityLevel,
+      profile.goal
+    );
+
+    if (aiRec) {
+      await ctx.editMessageText(
+        `🤖 <b>New AI Strategy Suggested</b>\n\n` +
+        `🎯 <b>Target:</b> ${aiRec.targetCalories} kcal\n` +
+        `🥩 <b>Protein:</b> ${aiRec.targetProtein}g\n` +
+        `⏳ <b>Time:</b> ${aiRec.estimatedDays} days\n\n` +
+        `🧠 <b>Reasoning:</b> ${aiRec.reasoning}\n\n` +
+        `<i>Update your daily targets?</i>`,
+        {
+          parse_mode: "HTML",
+          reply_markup: {
+            inline_keyboard: [
+              [{ 
+                text: "✅ Accept Strategy", 
+                callback_data: `accept_ai_strategy_${aiRec.targetCalories}_${aiRec.targetProtein}_${aiRec.estimatedDays}` 
+              }],
+              [{ text: "🔄 Generate Another", callback_data: "regenerate_strategy" }],
+              [{ text: "❌ Skip for Now", callback_data: "ignore_ai_target" }]
+            ]
+          }
+        }
+      );
+    }
   }
 
   else if (data === "ignore_ai_target" || data === "use_standard_plan") {
