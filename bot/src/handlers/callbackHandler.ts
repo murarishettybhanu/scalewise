@@ -1,6 +1,7 @@
 import { BotContext } from "../types";
 import { dietCommand } from "../commands";
 import { User, Profile, DailyLog, WeightLog, ActivityLog } from "../models";
+import { calculateGoalCaloriesAI } from "../services/gemini";
 
 /**
  * Handles all global inline button clicks (callback queries).
