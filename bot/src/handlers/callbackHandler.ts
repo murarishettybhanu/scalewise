@@ -56,6 +56,7 @@ export async function handleCallbackQuery(ctx: BotContext): Promise<void> {
     const kcal = parseInt(parts[3]);
     const protein = parseInt(parts[4]);
     const days = parseInt(parts[5]);
+    const adjustment = parseInt(parts[6]) || 0;
     const telegramId = ctx.from!.id;
 
     await Profile.findOneAndUpdate(
@@ -64,16 +65,20 @@ export async function handleCallbackQuery(ctx: BotContext): Promise<void> {
         targetCalories: kcal,
         targetProtein: protein,
         estimatedGoalDays: days,
+        strategyAdjustment: adjustment,
         goalStartDate: new Date()
       }
     );
+
+    const adjLabel = adjustment > 0 ? `+${adjustment}` : `${adjustment}`;
 
     await ctx.answerCallbackQuery({ text: `Strategy Activated!` });
     await ctx.editMessageText(
       `✅ <b>Strategy Activated!</b>\n\n` +
       `🎯 <b>Target:</b> ${kcal} kcal\n` +
       `🥩 <b>Protein:</b> ${protein}g\n` +
-      `⏳ <b>Duration:</b> ${days} days\n\n` +
+      `⏳ <b>Duration:</b> ${days} days\n` +
+      `🤖 <b>Adjustment:</b> ${adjLabel} kcal\n\n` +
       `<i>Your countdown starts now!</i>`, 
       { parse_mode: "HTML" }
     );
@@ -102,7 +107,7 @@ export async function handleCallbackQuery(ctx: BotContext): Promise<void> {
         `🤖 <b>New AI Strategy Suggested</b>\n\n` +
         `🎯 <b>Target:</b> ${aiRec.targetCalories} kcal\n` +
         `🥩 <b>Protein:</b> ${aiRec.targetProtein}g\n` +
-        `⏳ <b>Time:</b> ${aiRec.estimatedDays} days\n\n` +
+        `⏳ <b>Time:</b> ${aiRec.estimatedDays} days\n` +
         `🧠 <b>Reasoning:</b> ${aiRec.reasoning}\n\n` +
         `<i>Update your daily targets?</i>`,
         {
@@ -111,7 +116,7 @@ export async function handleCallbackQuery(ctx: BotContext): Promise<void> {
             inline_keyboard: [
               [{ 
                 text: "✅ Accept Strategy", 
-                callback_data: `accept_ai_strategy_${aiRec.targetCalories}_${aiRec.targetProtein}_${aiRec.estimatedDays}` 
+                callback_data: `accept_ai_strategy_${aiRec.targetCalories}_${aiRec.targetProtein}_${aiRec.estimatedDays}_${aiRec.adjustment}` 
               }],
               [{ text: "🔄 Generate Another", callback_data: "regenerate_strategy" }],
               [{ text: "❌ Skip for Now", callback_data: "ignore_ai_target" }]

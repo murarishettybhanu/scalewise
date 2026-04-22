@@ -264,7 +264,7 @@ export async function onboardingConversation(
         inline_keyboard: [
           [{ 
             text: "✅ Accept & Start Journey", 
-            callback_data: `accept_ai_strategy_${aiRecommendation.targetCalories}_${aiRecommendation.targetProtein}_${aiRecommendation.estimatedDays}` 
+            callback_data: `accept_ai_strategy_${aiRecommendation.targetCalories}_${aiRecommendation.targetProtein}_${aiRecommendation.estimatedDays}_${aiRecommendation.adjustment}` 
           }],
           [{ text: "🔄 Generate Another Plan", callback_data: "regenerate_strategy" }]
         ]
@@ -280,6 +280,7 @@ export async function onboardingConversation(
       const confirmedKcal = parseInt(parts[3]);
       const confirmedProtein = parseInt(parts[4]);
       const confirmedDays = parseInt(parts[5]);
+      const confirmedAdjustment = parseInt(parts[6]);
 
       await conversation.external(() => 
         Profile.findOneAndUpdate(
@@ -288,6 +289,7 @@ export async function onboardingConversation(
             targetCalories: confirmedKcal,
             targetProtein: confirmedProtein,
             estimatedGoalDays: confirmedDays,
+            strategyAdjustment: confirmedAdjustment,
             goalStartDate: new Date()
           }
         )

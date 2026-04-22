@@ -42,6 +42,7 @@ export interface IProfile extends Document {
   bankedCalories: number;
   goalStartDate: Date;
   estimatedGoalDays: number;
+  strategyAdjustment: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -128,6 +129,7 @@ const ProfileSchema = new Schema<IProfile>(
     bankedCalories: { type: Number, default: 0 },
     goalStartDate: { type: Date, default: Date.now },
     estimatedGoalDays: { type: Number, default: 0 },
+    strategyAdjustment: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

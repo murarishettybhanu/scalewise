@@ -236,10 +236,8 @@ export async function updateProfileConversation(
 
   await ctx.reply(`✅ *Vitals Updated!* (BMR: ${targets.bmr} | TDEE: ${targets.tdee})`, { parse_mode: "Markdown" });
 
-  // 6. AI Strategy Re-check (if weight changed)
-  const weightChanged = updateData.weight !== undefined || updateData.goalWeight !== undefined;
-  
-  if (weightChanged) {
+  // 6. AI Strategy Re-check (Always trigger if any update happened)
+  if (Object.keys(updateData).length > 0) {
     let lastStrategyMsgId: number | undefined;
     while (true) {
       if (lastStrategyMsgId) {
@@ -282,7 +280,7 @@ export async function updateProfileConversation(
             inline_keyboard: [
               [{ 
                 text: `✅ Accept Strategy`, 
-                callback_data: `accept_ai_strategy_${aiRec.targetCalories}_${aiRec.targetProtein}_${aiRec.estimatedDays}` 
+                callback_data: `accept_ai_strategy_${aiRec.targetCalories}_${aiRec.targetProtein}_${aiRec.estimatedDays}_${aiRec.adjustment}` 
               }],
               [{ text: "🔄 Generate Another Plan", callback_data: "regenerate_strategy" }],
               [{ text: "❌ Stick to Current", callback_data: "ignore_ai_target" }]
@@ -304,6 +302,7 @@ export async function updateProfileConversation(
               targetCalories: parseInt(parts[3]),
               targetProtein: parseInt(parts[4]),
               estimatedGoalDays: parseInt(parts[5]),
+              strategyAdjustment: parseInt(parts[6]),
               goalStartDate: new Date()
             }
           )

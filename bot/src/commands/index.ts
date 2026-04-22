@@ -1,7 +1,7 @@
 import { Context } from "grammy";
 import { User, Profile, DailyLog, WeightLog, ActivityLog } from "../models";
 import type { BotContext } from "../types";
-import { getRemainingPlan } from "../services/dietEngine";
+import { getRemainingPlan, getTodaysStatus } from "../services/dietEngine";
 import { generateRecipeFromPantry, parseFoodText, calculateGoalCaloriesAI, generateRandomRecipeAI } from "../services/gemini";
 import { parseActivityText, calculateActivityBurn } from "../services/activityService";
 import { calculateStepTax, getUrgeSurfingGuide, checkSodiumSpike } from "../services/behavioralService";
@@ -59,21 +59,28 @@ export async function profileCommand(ctx: BotContext): Promise<void> {
     very_active: "Extremely Active",
   };
 
+  const adj = profile.strategyAdjustment || 0;
+  const adjLabel = adj > 0 ? "Surplus" : "Deficit";
+  const adjText = `${adj > 0 ? "+" : ""}${adj} kcal (${adjLabel})`;
+
   await ctx.reply(
-    `📋 *Your ScaleWise Profile*\n\n` +
-      `${goalLabel}\n` +
-      `👤 ${profile.gender === "male" ? "Male" : "Female"}, ${profile.age}y\n` +
-      `📏 ${profile.height} cm | ⚖️ ${profile.weight} kg\n` +
-      `🏃 ${activityLabels[profile.activityLevel]}\n` +
-      `🍽️ ${dietLabel}${profile.region ? ` (${profile.region})` : ""}\n\n` +
-      `📦 *Cheat Day:* ${profile.cheatDay ? profile.cheatDay.charAt(0).toUpperCase() + profile.cheatDay.slice(1) : "Not set"}\n` +
+    `👤 *USER PROFILE: ${ctx.from?.first_name}*\n\n` +
+      `📏 *Vitals*\n` +
+      `• Age: ${profile.age}\n` +
+      `• Height: ${profile.height} cm\n` +
+      `• Weight: ${profile.weight} kg\n` +
+      `• Goal Weight: ${profile.goalWeight} kg\n\n` +
+      `🏃 *Activity Level:* ${profile.activityLevel.replace("_", " ")}\n` +
+      `🍽️ *Diet:* ${profile.dietType} (${profile.region || "Global"})\n` +
       `💰 *Banked Calories:* ${profile.bankedCalories} kcal\n\n` +
       `─── *Nutrition Targets* ───\n` +
       `📊 BMR: ${profile.bmr} kcal\n` +
       `⚡ TDEE: ${profile.tdee} kcal\n` +
+      `🤖 AI Strategy: ${adjText}\n` +
+      `⏳ AI Duration: ${profile.estimatedGoalDays} days remaining\n` +
       `🎯 Daily Calories: ${profile.targetCalories} kcal\n` +
       `🥩 Daily Protein: ${profile.targetProtein}g\n\n` +
-      `_Use /start to re-do onboarding_`,
+      `_Use /update to refresh your stats_`,
     { parse_mode: "Markdown" }
   );
 }
@@ -113,87 +120,6 @@ export async function deleteCommand(ctx: BotContext): Promise<void> {
   );
 }
 
-// ─── /weight command ────────────────────────────────────
-
-export async function weightCommand(ctx: BotContext): Promise<void> {
-  const telegramId = ctx.from!.id;
-  const match = ctx.message?.text?.match(/\/weight\s+(\d+(\.\d+)?)/);
-  
-  if (!match) {
-    await ctx.reply("Please provide your weight, e.g. `/weight 72.5`", { parse_mode: "Markdown" });
-    return;
-  }
-
-  const weight = parseFloat(match[1]);
-  const today = new Date().toISOString().split("T")[0];
-
-  const spikeAlert = await checkSodiumSpike(telegramId, weight);
-
-  await WeightLog.findOneAndUpdate(
-    { telegramId, date: today },
-    { weight },
-    { upsert: true }
-  );
-
-  const profile = await Profile.findOneAndUpdate({ telegramId }, { weight }, { new: true });
-  
-  let responseText = `⚖️ *Weight Logged:* ${weight} kg\nYour profile has been updated!`;
-  
-  if (profile?.goalStartDate && profile?.estimatedGoalDays) {
-    const goalStart = new Date(profile.goalStartDate);
-    const todayDate = new Date();
-    const diffTime = todayDate.getTime() - goalStart.getTime();
-    const daysPassed = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    let daysRemaining = profile.estimatedGoalDays - daysPassed;
-    if (daysRemaining < 0) daysRemaining = 0;
-    
-    responseText += `\n\n⏳ *Days Remaining:* ${daysRemaining} days`;
-  }
-
-  if (spikeAlert) {
-    responseText += `\n\n⚠️ *Sodium Spike Detected!* ${spikeAlert}`;
-  }
-
-  await ctx.reply(responseText, { parse_mode: "Markdown" });
-
-  // ─── AI Strategy Re-check ──────────────────────────────
-  if (profile) {
-    const aiRec = await calculateGoalCaloriesAI(
-      weight,
-      profile.goalWeight,
-      profile.age,
-      profile.height,
-      profile.gender,
-      profile.activityLevel,
-      profile.goal
-    );
-
-    if (aiRec) {
-      await ctx.reply(
-        `🤖 <b>AI Strategy Check</b>\n\n` +
-        `Based on your new weight, Gemini suggests:\n\n` +
-        `🎯 <b>Target:</b> ${aiRec.targetCalories} kcal\n` +
-        `🥩 <b>Protein:</b> ${aiRec.targetProtein}g\n` +
-        `⏳ <b>Estimated Time:</b> ${aiRec.estimatedDays} days\n` +
-        `🧠 <b>Reasoning:</b> ${aiRec.reasoning}\n\n` +
-        `<i>Update your daily budget & strategy?</i>`,
-        {
-          parse_mode: "HTML",
-          reply_markup: {
-            inline_keyboard: [
-              [{ 
-                text: `✅ Accept Strategy`, 
-                callback_data: `accept_ai_strategy_${aiRec.targetCalories}_${aiRec.targetProtein}_${aiRec.estimatedDays}` 
-              }],
-              [{ text: "🔄 Generate Another Plan", callback_data: "regenerate_strategy" }],
-              [{ text: "❌ Stick to Current", callback_data: "ignore_ai_target" }]
-            ]
-          }
-        }
-      );
-    }
-  }
-}
 
 // ─── /activity command (PHASE 3) ─────────────────────────
 
@@ -383,15 +309,47 @@ export async function pantryCommand(ctx: BotContext): Promise<void> {
 export async function recipeCommand(ctx: BotContext): Promise<void> {
   const telegramId = ctx.from!.id;
   const profile = await Profile.findOne({ telegramId });
+  const status = await getTodaysStatus(telegramId);
   
-  const waitMsg = await ctx.reply("👩‍🍳 *Dreaming up a healthy recipe for you...*", { parse_mode: "Markdown" });
+  if (!profile || !status) {
+    await ctx.reply("❌ Please set up your /profile first!");
+    return;
+  }
+
+  // 1. Determine Meal Type based on local time
+  const hour = new Date().getHours();
+  let mealType = "Dinner";
+  if (hour >= 5 && hour < 11) mealType = "Breakfast";
+  else if (hour >= 11 && hour < 16) mealType = "Lunch";
+  else if (hour >= 16 && hour < 19) mealType = "Snack";
+
+  // 2. Calculate smart calorie target for this meal
+  let suggestedKcal = 500;
+  if (mealType === "Breakfast") suggestedKcal = Math.round(profile.targetCalories * 0.25);
+  else if (mealType === "Lunch") suggestedKcal = Math.round(profile.targetCalories * 0.35);
+  else if (mealType === "Snack") suggestedKcal = 200;
+  else suggestedKcal = Math.round(profile.targetCalories * 0.30);
+
+  // Stay within remaining budget
+  suggestedKcal = Math.min(suggestedKcal, status.remaining);
   
-  const targetKcal = profile ? Math.round(profile.targetCalories / 3) : 600;
+  if (suggestedKcal < 150) {
+    suggestedKcal = Math.max(100, status.remaining); 
+  }
+
+  const waitMsg = await ctx.reply(
+    `👩‍🍳 <b>Strategic Kitchen Assistant</b>\n\n` +
+    `Time: ${hour}:00 | Remaining: ${status.remaining} kcal\n` +
+    `🤖 Dreaming up a healthy <b>${mealType}</b> (~${suggestedKcal} kcal) for you...`, 
+    { parse_mode: "HTML" }
+  );
   
   const recipe = await generateRandomRecipeAI(
-    profile?.dietType || "non-veg",
-    profile?.region,
-    targetKcal
+    profile.dietType || "non-veg",
+    profile.region,
+    suggestedKcal,
+    mealType,
+    status.remaining
   );
   
   await ctx.api.editMessageText(ctx.chat!.id, waitMsg.message_id, recipe, { parse_mode: "HTML" });
@@ -405,7 +363,6 @@ export async function helpCommand(ctx: BotContext): Promise<void> {
       `🥗 *Diet & Tracking*\n` +
       `• /log — Start a guided meal log (Photo or Text)\n` +
       `• /diet — See today's remaining budget\n` +
-      `• /weight <kg> — Log weight & check for spikes\n` +
       `• /pantry — Get AI recipe ideas from ingredients\n` +
       `• /recipe — Get a random healthy recipe idea\n\n` +
       `🏃 *Activity & Movement*\n` +

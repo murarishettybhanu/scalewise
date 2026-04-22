@@ -121,25 +121,28 @@ export async function generateRecipeFromPantry(items: string, targetKcal: number
 export async function generateRandomRecipeAI(
   dietType: string,
   region: string | undefined,
-  targetKcal: number
+  targetKcal: number,
+  mealType: string,
+  remainingKcal: number
 ): Promise<string> {
   const prompt = `
     Act as a professional chef and nutritionist. 
-    Suggest a RANDOM healthy recipe that is approximately ${targetKcal} calories for ONE meal.
-    
-    USER PREFERENCES:
+    Suggest a healthy, high-protein ${mealType} recipe for a user with these constraints:
     - Diet: ${dietType}
     - Regional Preference: ${region || "Any"}
-    - Target: High Protein, low oil
+    - Suggested Calories for this meal: ${targetKcal} kcal
+    - Total Remaining Calories for today: ${remainingKcal} kcal
+    - Goal: High Protein, low oil, balanced for the time of day (${mealType}).
     
     Output requirements:
     1. Use ONLY <b> for bold and <i> for italic. DO NOT use <p>, <ul>, <li>, or <ol> tags.
     2. Use plain newlines for spacing and "•" for bullet points.
     3. Dish Name (with a catchy emoji)
-    4. Ingredients list
-    5. Quick step-by-step instructions
-    6. Macro breakdown (Calories, Protein)
-    7. DO NOT use any markdown characters like * or _.
+    4. Why this is a great ${mealType} choice (1 sentence)
+    5. Ingredients list
+    6. Quick step-by-step instructions
+    7. Macro breakdown (Calories, Protein)
+    8. DO NOT use any markdown characters like * or _.
   `;
 
   try {
@@ -197,14 +200,15 @@ export interface GoalRecommendation {
   targetCalories: number;
   targetProtein: number;
   estimatedDays: number;
+  adjustment: number;
   reasoning: string;
 }
 
 /**
- * Calculates strategic calorie targets using AI based on goal weight.
+ * Uses Gemini to calculate a personalized calorie/protein strategy.
  */
 export async function calculateGoalCaloriesAI(
-  currentWeight: number,
+  weight: number,
   goalWeight: number,
   age: number,
   height: number,
@@ -213,41 +217,37 @@ export async function calculateGoalCaloriesAI(
   goal: string
 ): Promise<GoalRecommendation | null> {
   const prompt = `
-    Act as a professional sports nutritionist and metabolic specialist. 
-    Analyze the following user metrics and recommend the optimal DAILY calorie and protein targets to reach their Goal Weight safely and effectively.
+    Act as an expert fitness coach and nutritionist. 
+    Calculate a precision strategy for a user with these stats:
+    - Weight: ${weight}kg
+    - Goal Weight: ${goalWeight}kg
+    - Goal: ${goal === "deficit" ? "Fat Loss (Deficit)" : "Weight Gain (Surplus)"}
+    - Stats: ${gender}, ${age} years old, ${height}cm
+    - Activity: ${activityLevel}
     
-    USER METRICS:
-    - Current Weight: ${currentWeight} kg
-    - Goal Weight: ${goalWeight} kg
-    - Age: ${age}
-    - Height: ${height} cm
-    - Gender: ${gender}
-    - Activity Level: ${activityLevel}
-    - Overall Strategy: ${goal} (deficit for weight loss, surplus for weight gain)
-    
-    GUIDELINES:
-    1. PROTEIN: Provide a realistic daily protein target in grams. 
-       - Aim for 1.2g to 1.6g per kg of CURRENT weight. 
-       - This is for a general fitness enthusiast, NOT a professional bodybuilder. 
-       - The target should be manageable and practical (e.g. 80g-130g for most people).
-       - DO NOT suggest unrealistic targets (e.g. >160g) unless the user's weight justifies it. Stay sustainable.
-    
-    2. DURATION: Estimate the number of DAYS to reach the Goal Weight safely.
-       - Safe weight loss: ~0.5kg to 1kg per week.
-       - Safe weight gain: ~0.25kg to 0.5kg per week.
+    Guidelines:
+    - Maintenance (TDEE) calculation is the baseline.
+    - Deficit: Suggest -300 to -750 kcal from TDEE based on aggressive or sustainable intent.
+    - Surplus: Suggest +250 to +500 kcal from TDEE.
+    - Protein: 1.2g to 1.6g per kg of current body weight.
+    - Timeline:
+        - Safe fat loss: ~0.5kg to 1kg per week.
+        - Safe weight gain: ~0.25kg to 0.5kg per week.
     
     Output requirements:
     1. Calculate a specific daily calorie target (kcal).
     2. Calculate a specific daily protein target (grams).
     3. Estimate total duration in DAYS to reach the Goal Weight.
-    4. Provide a 1-2 sentence reasoning explaining the strategy.
-    5. Use ONLY <b> for bolding. DO NOT use markdown (* or _) or tags like <p>, <ul>, <li>, or <ol>.
+    4. Calculate the specific ADJUSTMENT amount from maintenance (e.g. -500 for deficit, 300 for surplus).
+    5. Provide a 1-2 sentence reasoning explaining the strategy.
+    6. Use ONLY <b> for bolding. DO NOT use markdown (* or _) or tags like <p>, <ul>, <li>, or <ol>.
     
     Return the result ONLY as a JSON object:
     {
       "targetCalories": number,
       "targetProtein": number,
       "estimatedDays": number,
+      "adjustment": number,
       "reasoning": string
     }
   `;

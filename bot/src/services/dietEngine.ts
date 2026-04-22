@@ -95,15 +95,17 @@ export async function getRemainingPlan(telegramId: number): Promise<string> {
   if (status.remaining <= 0) {
     return "🚨 *Budget Exhausted!* You've reached your calorie limit for today. Focus on ultra-low-calorie hydration (water, black coffee/tea) if still hungry.";
   }
+  const kgEquiv = (status.remaining / 7700).toFixed(3);
+
   return `
 📊 *DAILY STATUS*
 🔥 Calories: ${status.consumed} / ${status.totalTarget} 
 🥩 Protein: ${status.proteinConsumed} / ${status.proteinTarget}
 
-✅ *Remaining Budget:* ${status.remaining} kcal
-🚀 *Protein Target Remaining:* ${status.proteinRemaining}g
+✅ *Daily Allowance:* ${status.remaining} kcal (${kgEquiv} kg)
+🚀 *Protein Needed:* ${status.proteinRemaining}g
 
-_Tip: Focus your remaining ${status.remaining} calories on high-protein sources to hit your goal!_
+_Tip: Focus your allowance on high-protein sources to hit your goal!_
   `;
 }
 

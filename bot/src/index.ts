@@ -5,7 +5,7 @@ import { connectDatabase } from "./models/db";
 import { onboardingConversation } from "./conversations/onboarding";
 import { 
   startCommand, profileCommand, helpCommand, 
-  updateCommand, deleteCommand, weightCommand, 
+  updateCommand, deleteCommand, 
   logCommand, dietCommand, pantryCommand, recipeCommand,
   activityCommand, taxCommand, craveCommand, cheatCommand
 } from "./commands";
@@ -46,7 +46,6 @@ bot.command("start", startCommand);
 bot.command("profile", profileCommand);
 bot.command("update", updateCommand);
 bot.command("delete", deleteCommand);
-bot.command("weight", weightCommand);
 bot.command("activity", activityCommand);
 bot.command("tax", taxCommand);
 bot.command("crave", craveCommand);
