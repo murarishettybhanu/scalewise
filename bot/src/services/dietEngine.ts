@@ -1,4 +1,4 @@
-import { Profile, DailyLog, ActivityLog, IProfile } from "../models";
+import { Profile, DailyLog, ActivityLog, IProfile, Goal } from "../models";
 
 export interface DietStatus {
   totalTarget: number;
@@ -8,6 +8,8 @@ export interface DietStatus {
   proteinConsumed: number;
   proteinRemaining: number;
   activityBurned: number;
+  tdee: number;
+  goal: Goal;
 }
 
 /**
@@ -52,7 +54,9 @@ export async function getTodaysStatus(telegramId: number): Promise<DietStatus | 
     proteinTarget: profile.targetProtein,
     proteinConsumed,
     proteinRemaining: Math.max(0, profile.targetProtein - proteinConsumed),
-    activityBurned
+    activityBurned,
+    tdee: profile.tdee,
+    goal: profile.goal
   };
 }
 
@@ -92,20 +96,30 @@ export async function getRemainingPlan(telegramId: number): Promise<string> {
   const status = await getTodaysStatus(telegramId);
   if (!status) return "Profile not found.";
 
-  if (status.remaining <= 0) {
-    return "🚨 *Budget Exhausted!* You've reached your calorie limit for today. Focus on ultra-low-calorie hydration (water, black coffee/tea) if still hungry.";
-  }
-  const kgEquiv = (status.remaining / 7700).toFixed(3);
+  const isDeficit = status.goal === "deficit";
+  
+  // Math for Savings
+  const savingsKcal = isDeficit 
+    ? (status.tdee + status.activityBurned) - status.consumed
+    : status.consumed - (status.tdee + status.activityBurned);
+  
+  const savingsKg = (savingsKcal / 7700).toFixed(3);
+  const allowanceKg = (status.remaining / 7700).toFixed(3);
+
+  const allowanceLabel = isDeficit ? "✅ Safe to Eat:" : "🍱 Required Fuel:";
+  const savingsLabel = isDeficit ? "💰 Total Savings Today:" : "🧱 Total Muscle Investment:";
 
   return `
 📊 *DAILY STATUS*
 🔥 Calories: ${status.consumed} / ${status.totalTarget} 
 🥩 Protein: ${status.proteinConsumed} / ${status.proteinTarget}
 
-✅ *Daily Allowance:* ${status.remaining} kcal (${kgEquiv} kg)
-🚀 *Protein Needed:* ${status.proteinRemaining}g
+${allowanceLabel} ${status.remaining} kcal (${allowanceKg} kg)
+🚀 Protein Needed: ${status.proteinRemaining}g
 
-_Tip: Focus your allowance on high-protein sources to hit your goal!_
+${savingsLabel} ${savingsKcal} kcal (${savingsKg} kg)
+
+_Tip: Every choice is an investment in your ${isDeficit ? "future lean self" : "muscle growth"}!_
   `;
 }
 

@@ -316,31 +316,46 @@ export async function recipeCommand(ctx: BotContext): Promise<void> {
     return;
   }
 
-  // 1. Determine Meal Type based on local time
-  const hour = new Date().getHours();
+  // 1. Determine Meal Type based on INDIA time (IST)
+  const istDateString = new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
+  const istDate = new Date(istDateString);
+  const hour = istDate.getHours();
+  const minute = istDate.getMinutes();
+  const timeStr = `${hour}:${minute < 10 ? '0' : ''}${minute} IST`;
+
   let mealType = "Dinner";
   if (hour >= 5 && hour < 11) mealType = "Breakfast";
   else if (hour >= 11 && hour < 16) mealType = "Lunch";
   else if (hour >= 16 && hour < 19) mealType = "Snack";
 
-  // 2. Calculate smart calorie target for this meal
+  // 2. Math for Savings (Same as dietEngine)
+  const isDeficit = status.goal === "deficit";
+  const savingsKcal = isDeficit 
+    ? (status.tdee + status.activityBurned) - status.consumed
+    : status.consumed - (status.tdee + status.activityBurned);
+
+  // 3. Calculate smart calorie target for this meal
   let suggestedKcal = 500;
   if (mealType === "Breakfast") suggestedKcal = Math.round(profile.targetCalories * 0.25);
   else if (mealType === "Lunch") suggestedKcal = Math.round(profile.targetCalories * 0.35);
   else if (mealType === "Snack") suggestedKcal = 200;
   else suggestedKcal = Math.round(profile.targetCalories * 0.30);
 
-  // Stay within remaining budget
+  // Stay within reasonable bounds of the savings/allowance
+  // If we have very little allowance, suggest a very small meal
   suggestedKcal = Math.min(suggestedKcal, status.remaining);
   
-  if (suggestedKcal < 150) {
-    suggestedKcal = Math.max(100, status.remaining); 
+  if (suggestedKcal < 150 && status.remaining > 150) {
+    suggestedKcal = 200; 
+  } else if (suggestedKcal < 100) {
+    suggestedKcal = Math.max(100, status.remaining);
   }
 
   const waitMsg = await ctx.reply(
     `👩‍🍳 <b>Strategic Kitchen Assistant</b>\n\n` +
-    `Time: ${hour}:00 | Remaining: ${status.remaining} kcal\n` +
-    `🤖 Dreaming up a healthy <b>${mealType}</b> (~${suggestedKcal} kcal) for you...`, 
+    `🕒 <b>Time:</b> ${timeStr}\n` +
+    `💰 <b>Daily Savings:</b> ${savingsKcal} kcal\n\n` +
+    `🤖 Looking for a healthy <b>${mealType}</b> (~${suggestedKcal} kcal)...`, 
     { parse_mode: "HTML" }
   );
   
@@ -362,7 +377,7 @@ export async function helpCommand(ctx: BotContext): Promise<void> {
     `🤖 *ScaleWise AI — Interactive Command Center*\n\n` +
       `🥗 *Diet & Tracking*\n` +
       `• /log — Start a guided meal log (Photo or Text)\n` +
-      `• /diet — See today's remaining budget\n` +
+      `• /diet — Check Daily Savings & Progress\n` +
       `• /pantry — Get AI recipe ideas from ingredients\n` +
       `• /recipe — Get a random healthy recipe idea\n\n` +
       `🏃 *Activity & Movement*\n` +
